@@ -1,0 +1,1838 @@
+<div class="app-shell">
+  <div class="app-layout">
+    <aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.open]="!sidebarCollapsed">
+      <div class="sidebar-panel">
+        <button type="button" class="sidebar-action" (click)="newConversation()">
+          <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Percakapan Baru
+        </button>
+      </div>
+
+      <div class="sidebar-search">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="6"/>
+            <path d="m16 16 4 4"/>
+          </svg>
+          <input [(ngModel)]="searchQuery" type="text" placeholder="Cari percakapan..." class="search-input" />
+        </div>
+      </div>
+
+      <div class="conversation-list">
+        <div *ngFor="let group of filteredConversations()" class="conversation-group">
+          <div class="conversation-label">{{ group.label }}</div>
+          <div class="conversation-items">
+            <div *ngFor="let item of group.items; trackBy: trackBySessionId" class="conversation-item" [class.active]="item.active" (click)="loadSession(item.id)">
+              <div class="conversation-icon">
+                <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M7 8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5v6A2.5 2.5 0 0 1 14.5 17H9.5A2.5 2.5 0 0 1 7 14.5v-6Z"/>
+                  <path d="M9 10h6M9 13h4"/>
+                </svg>
+              </div>
+              
+              <div class="conversation-body">
+                <div class="conversation-title">{{ item.title }}</div>
+                <div class="conversation-preview">{{ item.preview }}</div>
+              </div>
+
+              <div class="conversation-actions">
+                <button type="button" class="menu-trigger" aria-label="Conversation actions" aria-haspopup="menu" [attr.aria-expanded]="activeMenuId === item.id" (click)="toggleMenu($event, item.id)">
+                  <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="1.5"/>
+                    <circle cx="12" cy="5" r="1.5"/>
+                    <circle cx="12" cy="19" r="1.5"/>
+                  </svg>
+                </button>
+
+                <div *ngIf="activeMenuId === item.id" class="context-menu" role="menu">
+                  <button type="button" role="menuitem" (click)="shareSession(item.id, $event)">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 16V4m0 0L7 9m5-5 5 5"/>
+                      <path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>
+                    </svg>
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    class="delete-btn"
+                    role="menuitem"
+                    (click)="askDeleteSession(item.id, item.title, $event)">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 6h18"/>
+                      <path d="M8 6V4h8v2m-9 0 1 14h8l1-14"/>
+                      <path d="M10 11v5m4-5v5"/>
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div *ngIf="filteredConversations().length === 0" 
+            class="conversation-label" 
+            style="text-align: center; margin-top: 2rem; padding: 1rem;">
+          Belum ada riwayat percakapan
+        </div>
+      </div>
+
+      <div class="sidebar-user">
+        <button 
+          type="button" 
+          class="user-profile-btn" 
+          [class.active]="userMenuOpen"
+          (click)="toggleUserMenu($event)">
+          <div class="user-avatar">
+            {{ (currentUser?.username || '?').charAt(0).toUpperCase() }}
+          </div>
+          <div class="user-info">
+            <div class="user-name">{{ currentUser?.full_name || currentUser?.username || 'User' }}</div>
+          </div>
+          <button 
+            type="button" 
+            class="user-menu-trigger" 
+            (click)="toggleUserMenu($event)"
+            aria-label="User menu">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1.5"/>
+              <circle cx="12" cy="5" r="1.5"/>
+              <circle cx="12" cy="19" r="1.5"/>
+            </svg>
+          </button>
+        </button>
+
+        <div *ngIf="userMenuOpen" class="user-menu" role="menu">
+          <button type="button" class="user-menu-item logout-item" (click)="logout()">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="app-main" [class.collapsed]="sidebarCollapsed">
+      <header class="app-header">
+        <div class="header-left">
+          <button type="button" class="icon-button" aria-label="Toggle sidebar" (click)="toggleSidebar()">
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="header-right">
+          <button type="button" class="icon-button" (click)="toggleSchemaPanel()" [class.active]="schemaPanelOpen" title="Database Explorer">
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 5h18v14H3zM3 10h18M9 5v14"/>
+            </svg>
+          </button>
+
+          <button *ngIf="isDbOwner()" type="button" class="icon-button" (click)="openUserPanel()" title="Manajemen User" >
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section #chatStream class="chat-stream">
+        <div class="chat-shell">
+          <div *ngIf="messages.length === 0" class="empty-state">
+            <div class="empty-state-card">
+              <div class="empty-icon  ">
+                <svg viewBox="0 0 24 24" class="icon-svg large" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                </svg>
+              </div>
+              <h2>Bagaimana saya dapat membantu analisis data anda hari ini?</h2>
+              <p>Buat query SQL Server dan jalankan otomatis.</p>
+            </div>
+          </div>
+
+          <div *ngFor="let message of messages" class="chat-row" [class.user]="message.type === 'user'" [class.ai]="message.type === 'ai'">
+            <div *ngIf="message.type === 'user'" class="message-user">
+              <div class="user-bubble">
+                <div class="user-text">{{ message.text }}</div> 
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && message.draftQuery" class="message-ai">
+              <div class="ai-card">
+                <div class="ai-header">
+                  <div class="ai-header-meta">
+                    <div class="meta-icon">
+                      <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 7h8v10H8zM10 10h4M10 13h4"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3><b>Draft Query</b></h3>
+                    </div>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <div class="query-alert">
+                  <div class="alert-icon">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="8"/>
+                      <path d="M12 8v5M12 16h.01"/>
+                    </svg>
+                  </div>
+                  <p>
+                    Operasi Dibatalkan: 
+                    <br>Query ini disimpan sebagai draf dan belum dieksekusi ke database. Anda dapat menyalin untuk dijalankan manual di SSMS atau menjalankan ulang kapan saja.
+                  </p>
+                </div>
+
+                <div class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">{{ getObjectLabel(message.sql) }}</div>
+                    <div class="meta-value">{{ getTableName(message.metadata, message.sql) }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Estimasi Dampak</div>
+                    <div class="meta-value">{{ getEstimatedImpact(message.metadata) || '-' }} baris</div>
+                  </div>
+                </div>
+
+                  <div class="query-pre">
+                    <div class="query-header">
+                      <div class="query-header-left">
+                        <span class="status-indicator"></span>
+                        <span>SQL Query</span>
+                      </div>
+                      <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                        <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="9" y="9" width="11" height="11" rx="2"/>
+                          <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                        </svg>
+                        Salin
+                      </button>
+                    </div>
+                    <pre><code>{{ message.sql }}</code></pre>
+                  </div>
+
+                <div class="card-actions">
+                  <button type="button" class="primary-button" (click)="rerunDraft(message.draftQuery!)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m17 2 4 4-4 4"></path>
+                      <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
+                      <path d="m7 22-4-4 4-4"></path>
+                      <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
+                    </svg>
+                    Jalankan Ulang    
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'destructive' && !isCreationSql(message.sql) && !isStatusType(message.status_type, 'approved')" class="message-ai">
+              <div class="warning-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot"></span>
+                    <span>KONFIRMASI DIPERLUKAN !!!</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+
+                <p class="warning-text">
+                  <b>QUERY INI TERDETEKSI BERBAHAYA UNTUK DIJALANKAN SECARA OTOMATIS</b><br>
+                  Query ini bersifat destruktif dan akan mengubah atau menghapus data secara permanen. Pastikan Anda telah memverifikasi jumlah baris yang terdampak sebelum mengeksekusi.
+                </p>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator"></span>
+                      <span>SQL Query</span>
+                    </div>
+    
+                    <div class="query-header-actions">
+                      <ng-container *ngIf="!isEditingMessage(message)">
+                        <button type="button" class="inline-action edit-btn" (click)="startInlineEdit(message)" title="Edit query">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                          </svg>
+                          Edit
+                        </button>
+                        <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"/>
+                            <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                          </svg>
+                          Salin
+                        </button>
+                      </ng-container>
+                                      
+                      <ng-container *ngIf="isEditingMessage(message)">
+                        <button type="button" class="inline-action cancel-btn" (click)="cancelInlineEdit()">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 6l12 12M18 6 6 18"/>
+                          </svg>
+                          Batal
+                        </button>
+                        <button type="button" class="inline-action save-btn" (click)="saveInlineEdit(message)">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12.5 9.5 17 19 7.5"/>
+                          </svg>
+                          Simpan &amp; Jalankan
+                        </button>
+                      </ng-container>
+                    </div>
+                  </div>
+
+                  <pre *ngIf="!isEditingMessage(message)"><code>{{ message.sql }}</code></pre>
+                  <textarea *ngIf="isEditingMessage(message)" [(ngModel)]="inlineEditText" class="inline-edit-textarea" rows="8" spellcheck="false" placeholder="-- Edit query di sini..."></textarea>
+                </div>
+
+                <div class="warning-meta">
+                  <div class="warning-impact">
+                    <b>Estimasi Dampak:</b> {{ getEstimatedImpact(message.metadata) || '-' }} baris
+                  </div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button success-button" (click)="confirmDestructive(message)">CONFIRM &amp; EXECUTE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && isCreationSql(message.sql) && !isStatusType(message.status_type, 'approved')" class="message-ai">
+              <div class="warning-banner creation-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot"></span>
+                    <span>KONFIRMASI DIPERLUKAN</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+
+                <p class="warning-text">
+                  <b>KONFIRMASI DIPERLUKAN: PEMBUATAN STORED PROCEDURE / VIEW / BACKUP</b><br>
+                  {{ message.narrative }}
+                </p>
+           
+                <div class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">{{ getObjectLabel(message.sql) }}</div>
+                    <div class="meta-value">{{ getTableName(message.metadata, message.sql) }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tipe Operasi</div>
+                    <div class="meta-value">{{ message.metadata?.query_type ?? 'CREATE' }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Estimasi Dampak</div>
+                    <div class="meta-value">{{ getEstimatedImpact(message.metadata) || 0 }} baris</div>
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator"></span>
+                      <span>SQL Query</span>
+                    </div>
+    
+                    <div class="query-header-actions">
+                      <ng-container *ngIf="!isEditingMessage(message)">
+                        <button type="button" class="inline-action edit-btn" (click)="startInlineEdit(message)" title="Edit query">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                          </svg>
+                          Edit
+                        </button>
+                        <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="11" height="11" rx="2"/>
+                            <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                          </svg>
+                          Salin
+                        </button>
+                      </ng-container>
+                                      
+                      <ng-container *ngIf="isEditingMessage(message)">
+                        <button type="button" class="inline-action cancel-btn" (click)="cancelInlineEdit()">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 6l12 12M18 6 6 18"/>
+                          </svg>
+                          Batal
+                        </button>
+                        <button type="button" class="inline-action save-btn" (click)="saveInlineEdit(message)">
+                          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12.5 9.5 17 19 7.5"/>
+                          </svg>
+                          Simpan &amp; Jalankan
+                        </button>
+                      </ng-container>
+                    </div>
+                  </div>
+
+                  <pre *ngIf="!isEditingMessage(message)"><code>{{ message.sql }}</code></pre>
+                  <textarea *ngIf="isEditingMessage(message)" [(ngModel)]="inlineEditText" class="inline-edit-textarea" rows="8" spellcheck="false" placeholder="-- Edit query di sini..."></textarea>
+                </div>
+
+                <div class="warning-meta">
+                  <div class="warning-impact" style="border-color: rgba(96, 165, 250, 0.3); color: #60A5FA;">
+                    <b>Status:</b> Menunggu Persetujuan
+                  </div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button success-button" (click)="confirmDestructive(message)">
+                      CONFIRM &amp; EXECUTE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'confirm_create_table'" class="message-ai">
+              <div class="warning-banner confirm-create-table-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot" style="background:#10B981"></span>
+                    <span>KONFIRMASI PEMBUATAN TABEL</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+                <p class="warning-text">
+                  <b>TABEL BARU AKAN DIBUAT DI DATABASE {{ message.metadata?.database }}</b><br>
+                  Pastikan nama tabel, kolom, dan tipe data sudah benar sebelum melanjutkan.
+                </p>
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#10B981"></span>
+                      <span>SQL Query</span>
+                    </div>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+                <div class="warning-meta">
+                  <div class="warning-impact"><b>Tabel:</b> {{ message.metadata?.table }}</div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button success-button" (click)="confirmDestructive(message)">CONFIRM &amp; EXECUTE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'confirm_rename_column'" class="message-ai">
+              <div class="warning-banner confirm-rename-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot" style="background:#8B5CF6"></span>
+                    <span>KONFIRMASI UBAH NAMA KOLOM</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+                <p class="warning-text">
+                  <b>NAMA KOLOM AKAN DIUBAH DI DATABASE {{ message.metadata?.database }}</b><br>
+                  Perubahan ini bersifat permanen.
+                </p>
+                <div class="metadata-grid" style="margin-top:1rem">
+                  <div class="meta-box">
+                    <div class="meta-label">Tabel</div>
+                    <div class="meta-value">{{ message.metadata?.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Kolom Lama</div>
+                    <div class="meta-value" style="text-decoration:line-through">{{ message.metadata?.old_column }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Kolom Baru</div>
+                    <div class="meta-value" style="font-weight:700">{{ message.metadata?.new_column }}</div>
+                  </div>
+                </div>
+                <div class="query-pre" style="margin-top:1rem">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#8B5CF6"></span>
+                      <span>SQL Query</span>
+                    </div>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+                <div class="warning-meta">
+                  <div class="warning-impact" style="color:#A78BFA"><b>Status:</b> Menunggu Persetujuan</div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button" style="background:#8B5CF6" (click)="confirmDestructive(message)">CONFIRM &amp; EXECUTE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'confirm_alter_drop_column'" class="message-ai">
+              <div class="warning-banner confirm-alter-drop-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot" style="background:#EF4444"></span>
+                    <span>KONFIRMASI HAPUS KOLOM</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+                <p class="warning-text">
+                  <b style="color:#F87171">⚠ PERHATIAN: DATA AKAN HILANG PERMANEN</b><br>
+                  Kolom akan dihapus dari tabel. Semua data di kolom ini akan hilang dan tidak dapat dikembalikan!
+                </p>
+                <div class="metadata-grid" style="margin-top:1rem">
+                  <div class="meta-box">
+                    <div class="meta-label">Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tabel</div>
+                    <div class="meta-value">{{ message.metadata?.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Kolom Dihapus</div>
+                    <div class="meta-value" style="color:#F87171;font-weight:700">{{ message.metadata?.column_name }}</div>
+                  </div>
+                </div>
+                <div class="query-pre" style="margin-top:1rem">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#EF4444"></span>
+                      <span>SQL Query</span>
+                    </div>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+                <div class="warning-meta">
+                  <div class="warning-impact" style="color:#F87171"><b>Destruktif:</b> Data akan hilang permanen</div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button" style="background:#EF4444" (click)="confirmDestructive(message)">CONFIRM &amp; EXECUTE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'confirm_alter_foreign_key'" class="message-ai">
+              <div class="warning-banner confirm-fk-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot" style="background:#60A5FA"></span>
+                    <span>KONFIRMASI TAMBAH FOREIGN KEY</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+                <p class="warning-text">
+                  <b>FOREIGN KEY AKAN DITAMBAHKAN</b><br>
+                  Pastikan relasi antar tabel sudah benar sebelum melanjutkan.
+                </p>
+                <div class="query-pre" style="margin-top:1rem">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#60A5FA"></span>
+                      <span>SQL Query</span>
+                    </div>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+                <div class="warning-meta">
+                  <div class="warning-impact" style="color:#60A5FA"><b>Status:</b> Menunggu Persetujuan</div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button" style="background:#3B82F6" (click)="confirmDestructive(message)">CONFIRM &amp; EXECUTE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'confirm_alter_table'" class="message-ai">
+              <div class="warning-banner confirm-alter-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot" style="background:#FBBF24"></span>
+                    <span>KONFIRMASI PERUBAHAN STRUKTUR TABEL</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+                <p class="warning-text">
+                  <b>STRUKTUR TABEL AKAN DIUBAH</b><br>
+                  Pastikan perubahan sudah sesuai sebelum melanjutkan.
+                </p>
+                <div class="query-pre" style="margin-top:1rem">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#FBBF24"></span>
+                      <span>SQL Query</span>
+                    </div>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+                <div class="warning-meta">
+                  <div class="warning-impact" style="color:#FBBF24"><b>Tabel:</b> {{ message.metadata?.table }}</div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button" style="background:#F59E0B" (click)="confirmDestructive(message)">CONFIRM &amp; EXECUTE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'confirm_alter_add_column'" class="message-ai">
+              <div class="warning-banner confirm-alter-add-banner">
+                <div class="warning-top">
+                  <div class="warning-label">
+                    <span class="status-dot" style="background:#10B981"></span>
+                    <span>KONFIRMASI TAMBAH KOLOM</span>
+                  </div>
+                  <span class="warning-badge">{{ formatCountdown(message.expiresIn) }}</span>
+                </div>
+                
+                <p class="warning-text">
+                  <b>KOLOM BARU AKAN DITAMBAHKAN</b><br>
+                  Kolom baru akan ditambahkan ke tabel di database {{ message.metadata?.database }}. 
+                  Pastikan nama kolom dan tipe data sudah sesuai sebelum melanjutkan.
+                </p>
+                
+                <div class="metadata-grid" style="margin-top:1rem">
+                  <div class="meta-box">
+                    <div class="meta-label">Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tabel</div>
+                    <div class="meta-value">{{ message.metadata?.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Kolom Baru</div>
+                    <div class="meta-value" style="color:#34D399;font-weight:700">
+                      {{ message.metadata?.column_name && message.metadata?.column_name !== '-' ? message.metadata?.column_name : '-' }}
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="query-pre" style="margin-top:1rem">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#10B981"></span>
+                      <span>SQL Query</span>
+                    </div>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+                
+                <div class="warning-meta">
+                  <div class="warning-impact" style="color:#34D399">
+                    <b>Status:</b> Menunggu Persetujuan
+                  </div>
+                  <div class="card-actions compact">
+                    <button type="button" class="action-button" (click)="cancelDestructive(message)">BATAL</button>
+                    <button type="button" class="primary-button success-button" (click)="confirmDestructive(message)">
+                      CONFIRM &amp; EXECUTE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'approved'" class="message-ai">
+              <div class="approved-banner">
+                <div class="approved-top">
+                  <div class="approved-label">
+                    <span class="approved-icon">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M5 12.5 9.5 17 19 7.5"/>
+                      </svg>
+                    </span>
+                    <span>PERSETUJUAN DIBUAT</span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p class="approved-text">
+                  <b>Persetujuan telah dibuat. Query berhasil dijalankan.</b><br>
+                  Operasi telah dieksekusi ke database sesuai persetujuan Anda.
+                </p>
+
+                <div class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">{{ getObjectLabel(message.sql) }}</div>
+                    <div class="meta-value">{{ getTableName(message.metadata, message.sql) }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tipe Operasi</div>
+                    <div class="meta-value">{{ message.metadata?.query_type ?? 'EXECUTE' }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Jumlah Baris</div>
+                    <div class="meta-value">{{ message.metadata?.row_count ?? 0 }} baris</div>
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#34D399"></span>
+                      <span>SQL Query</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'clarification'" class="message-ai">
+              <div class="clarification-card">
+                <div class="clarification-header">
+                  <div class="clarification-icon">
+                    <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M12 8v.01M12 11v5"/>
+                    </svg>
+                  </div>
+                  <div class="clarification-title">
+                    <h3>Perlu Klarifikasi</h3>
+                    <span class="clarification-sub">Informasi tambahan dibutuhkan</span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p class="clarification-text">{{ message.narrative }}</p>
+
+                <div class="clarification-hint">
+                  <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2Z"/>
+                  </svg>
+                  Balas pesan ini dengan informasi yang diminta.
+                </div>
+              </div>
+            </div>
+            
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'forbidden'" class="message-ai">
+              <div class="ai-message">
+                <div class="ai-message-top">
+                  <span class="ai-status danger">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M5.6 5.6l12.8 12.8"/>
+                    </svg>
+                    {{ message.status_text ?? 'Operasi Ditolak' }}
+                  </span>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>{{ message.narrative }}</p>
+
+                <div *ngIf="message.metadata" class="meta-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Klasifikasi</div>
+                    <div class="meta-value">FORBIDDEN</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Query Type</div>
+                    <div class="meta-value">{{ message.metadata.query_type ?? 'UNKNOWN' }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Status</div>
+                    <div class="meta-value">Tidak Dieksekusi</div>
+                  </div>
+                </div>
+
+                <div *ngIf="message.sql || message.metadata?.query" class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#f87171"></span>
+                      <span>SQL Query</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? message.metadata?.query ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'unauthorized'" class="message-ai">
+              <div class="unauthorized-card">
+                <div class="unauthorized-header">
+                  <div class="unauthorized-icon">
+                    <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                  <div class="unauthorized-title">
+                    <h3>Akses Ditolak</h3>
+                    <span class="unauthorized-sub">Role Anda tidak diizinkan untuk operasi ini</span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p class="unauthorized-text">{{ message.narrative }}</p>
+
+                <div class="unauthorized-hint">
+                  <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 8v5M12 16h.01"/>
+                  </svg>
+                  Hubungi DB Owner untuk meminta tambahan akses
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && isStatusType(message.status_type, 'success') && isSpRenameQuery(message.sql)" class="message-ai">
+              <div class="operation-banner rename-banner">
+                <div class="operation-header">
+                  <div class="operation-status">
+                    <span class="ai-status" [class.success]="isStatusType(message.status_type, 'success')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                      </svg>
+                      {{ message.status_text }}
+                    </span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>{{ message.narrative }}</p>
+
+                <div class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Tabel</div>
+                    <div class="meta-value">{{ message.metadata?.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tipe Operasi</div>
+                    <div class="meta-value rename-accent">EXEC sp_rename</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Kolom Lama</div>
+                    <div class="meta-value old-value">{{ message.metadata?.old_column }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Kolom Baru</div>
+                    <div class="meta-value new-value">{{ message.metadata?.new_column }}</div>
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator"></span>
+                      <span>SQL Query</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && isStatusType(message.status_type, 'success') && isCreateTableQuery(message.sql)" class="message-ai">
+              <div class="operation-banner create-table-banner">
+                <div class="operation-header">
+                  <div class="operation-status">
+                    <span class="ai-status" [class.success]="isStatusType(message.status_type, 'success')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 4v16M4 12h16"/>
+                      </svg>
+                      {{ message.status_text }}
+                    </span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>Table {{ message.metadata?.table }} berhasil dibuat, harap cek kembali nama kolom dan tipe data yang telah dibuat</p>
+
+                <div class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Tabel</div>
+                    <div class="meta-value">{{ message.metadata?.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tipe Operasi</div>
+                    <div class="meta-value">CREATE TABLE</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Jumlah Kolom</div>
+                    <div class="meta-value">{{ extractColumnDefinitions(message.sql).length }} kolom</div>
+                  </div>
+                </div>
+
+                <div class="columns-list-wrapper">
+                  <div class="columns-list-header">
+                    <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 5h18v14H3zM3 10h18M9 5v14"/>
+                    </svg>
+                    <span>Struktur Kolom</span>
+                  </div>
+                  <div class="columns-list">
+                    <div *ngFor="let col of extractColumnDefinitions(message.sql); let i = index" class="column-item">
+                      <div class="column-index">{{ i + 1 }}</div>
+                      <div class="column-name">{{ col.name }}</div>
+                      <div class="column-type">{{ col.type }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#10B981"></span>
+                      <span>SQL Query</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && isStatusType(message.status_type, 'success') && isAlterTableQuery(message.sql) && !isSpRenameQuery(message.sql) && !isCreateTableQuery(message.sql)" class="message-ai">
+              <div class="operation-banner alter-banner">
+                <div class="operation-header">
+                  <div class="operation-status">
+                    <span class="ai-status" [class.success]="isStatusType(message.status_type, 'success')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                      </svg>
+                    </span>
+                    <div>
+                      <h3 class="operation-title">{{ message.status_text ?? 'Struktur Tabel Diubah' }}</h3>
+                    </div>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>{{ message.narrative }}</p>
+
+                <div class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata?.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Tabel</div>
+                    <div class="meta-value">{{ message.metadata?.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Kolom</div>
+                    <div class="meta-value">{{ message.metadata?.column_name ?? '-' }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Tipe Operasi</div>
+                    <div class="meta-value">
+                      {{ message.metadata?.query_type ?? 'ALTER TABLE' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#FBBF24"></span>
+                      <span>SQL Query</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'success' && (isDataDisplayQuery(message.sql) && !isSpRenameQuery(message.sql) && !isCreateTableQuery(message.sql) && !isAlterTableQuery(message.sql))" class="message-ai">
+              <div class="data-display-banner">
+                <div class="data-display-header">
+                  <div class="data-display-status">
+                    <span class="ai-status" [class.success]="isStatusType(message.status_type, 'success')">
+                    <svg *ngIf="isStatusType(message.status_type, 'success')" viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12.5 9.5 17 19 7.5"/>
+                    </svg>
+                    <svg *ngIf="isStatusType(message.status_type, 'warning') || isStatusType(message.status_type, 'danger')" viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 9v4"/> 
+                      <path d="M12 17h.01"/>
+                      <path d="M10.3 3.5 2.8 16.5A2 2 0 0 0 4.5 19h15a2 2 0 0 0 1.7-2.5L13.7 3.5a2 2 0 0 0-3.4 0Z"/>
+                    </svg>
+                    <svg *ngIf="isStatusType(message.status_type, 'info')" viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="8"/>
+                      <path d="M12 11v5M12 8h.01"/>
+                    </svg>
+                    {{ message.status_text }}
+                  </span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>{{ message.narrative }}</p>
+
+                <div *ngIf="message.metadata" class="metadata-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">{{ getObjectLabel(message.sql) }}</div>
+                    <div class="meta-value">{{ getTableName(message.metadata, message.sql) }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Jumlah Baris</div>
+                    <div class="meta-value">{{ message.metadata.row_count }} baris</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Query Type</div>
+                    <div class="meta-value">{{ message.metadata.query_type }}</div>
+                  </div>
+                </div>
+
+                <div *ngIf="message.data && message.data.length > 0" class="data-table-wrapper">
+                  <div class="data-table-container">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th class="data-table-index">#</th>
+                          <th *ngFor="let col of getDisplayColumns(message.data)">
+                            {{ formatColumnName(col) }}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let row of message.data; let i = index">
+                          <td class="data-table-index">{{ i + 1 }}</td>
+                          <td *ngFor="let col of getDisplayColumns(message.data)">
+                            <span *ngIf="col.toLowerCase().includes('akreditasi')" class="data-table-badge-mini">
+                              {{ formatDisplayValue(getRowValue(row, col)) }}
+                            </span>
+                            <span *ngIf="!col.toLowerCase().includes('akreditasi')">
+                              {{ formatDisplayValue(getRowValue(row, col)) }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div *ngIf="message.data.length >= 100" class="data-table-note">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M12 8v5M12 16h.01"/>
+                    </svg>
+                    Menampilkan maksimal 100 baris. Gunakan filter untuk mempersempit hasil.
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#10B981"></span>
+                      <span>SQL Query</span>
+                    </div>
+
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+
+                    <button type="button" class="inline-action" (click)="exportToExcel(message.data || [], 'Data_Export')">
+                      Excel
+                    </button>
+
+                    <button type="button" class="inline-action" (click)="exportToCSV(message.data || [], 'Data_Export')">
+                      CSV
+                    </button>
+
+                    <button type="button" class="inline-action" (click)="exportToPDF(message.data || [], 'Data_Export')">
+                      PDF
+                    </button>
+                  
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && isStatusType(message.status_type, 'danger')" class="message-ai">
+              <div class="ai-message error-message-card">
+                <div class="ai-message-top">
+                  <span class="ai-status danger">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M12 8v4"/>
+                      <path d="M12 16h.01"/>
+                    </svg>
+                    {{ message.status_text ?? 'Eksekusi Gagal' }}
+                  </span>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>{{ message.narrative }}</p>
+
+                <div *ngIf="message.sql" class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator" style="background:#F87171"></span>
+                      <span>SQL Query — Gagal Dieksekusi</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && message.status_type === 'rate_limit'" class="message-ai">
+              <div class="rate-limit-banner">
+                <div class="rate-limit-header">
+                  <div class="rate-limit-label">
+                    <span class="status-dot" style="background:#EF4444"></span>
+                    <span>BATAS REQUEST TERCAPAI</span>
+                  </div>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+                <p class="rate-limit-text">{{ message.narrative }}</p>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && !isConfirmType(message.status_type) && !isStatusType(message.status_type, 'forbidden') && !isStatusType(message.status_type, 'unauthorized') &&!isStatusType(message.status_type, 'creation') && !isStatusType(message.status_type, 'approved') && !isStatusType(message.status_type, 'clarification') && !isDataDisplayQuery(message.sql) && !isStatusType(message.status_type, 'danger') && !(message.status_type === 'rate_limit') && !isSpRenameQuery(message.sql) && !isCreateTableQuery(message.sql) && !isAlterTableQuery(message.sql)" class="message-ai" >
+              <div class="ai-message">
+                <div class="ai-message-top">
+                  <span class="ai-status" [class.success]="isStatusType(message.status_type, 'success')" [class.warning]="isStatusType(message.status_type, 'warning')" [class.danger]="isStatusType(message.status_type, 'danger')" [class.info]="isStatusType(message.status_type, 'info')">
+                    <svg *ngIf="isStatusType(message.status_type, 'success')" viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12.5 9.5 17 19 7.5"/>
+                    </svg>
+                    <svg *ngIf="isStatusType(message.status_type, 'warning') || isStatusType(message.status_type, 'danger')" viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 9v4"/> 
+                      <path d="M12 17h.01"/>
+                      <path d="M10.3 3.5 2.8 16.5A2 2 0 0 0 4.5 19h15a2 2 0 0 0 1.7-2.5L13.7 3.5a2 2 0 0 0-3.4 0Z"/>
+                    </svg>
+                    <svg *ngIf="isStatusType(message.status_type, 'info')" viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="8"/>
+                      <path d="M12 11v5M12 8h.01"/>
+                    </svg>
+                    {{ message.status_text }}
+                  </span>
+                  <span class="ai-timestamp">{{ message.timestamp }}</span>
+                </div>
+
+                <p>{{ message.narrative }}</p>
+
+                <div *ngIf="message.metadata" class="meta-grid">
+                  <div class="meta-box">
+                    <div class="meta-label">Nama Database</div>
+                    <div class="meta-value">{{ message.metadata.database }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">{{ getObjectLabel(message.sql) }}</div>
+                    <div class="meta-value">{{ message.metadata.table }}</div>
+                  </div>
+                  <div class="meta-box">
+                    <div class="meta-label">Jumlah Baris</div>
+                    <div class="meta-value">{{ message.metadata.row_count }} baris</div>
+                  </div>  
+                  <div class="meta-box">
+                    <div class="meta-label">Query Type</div>
+                    <div class="meta-value">{{ message.metadata.query_type }}</div>
+                  </div>
+                </div>
+
+                <div class="query-pre">
+                  <div class="query-header">
+                    <div class="query-header-left">
+                      <span class="status-indicator"></span>
+                      <span>SQL Query</span>
+                    </div>
+                    <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="11" height="11" rx="2"/>
+                        <path d="M5 15V7a2 2 0 0 1 2-2h8"/>
+                      </svg>
+                      Salin
+                    </button>
+                  </div>
+                  <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="isLoading" class="message-loader">
+            <div class="loader-chip">
+              <span class="loader-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+              Sedang memproses...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="composer">
+        <div class="composer-inner">
+          <div class="composer-box">
+            <textarea #mainInput [(ngModel)]="messageText" rows="1" [disabled]="isLoading" (keydown.enter)="onSubmitKeydown($event)" placeholder="Ask SQL AI Agent, build and execute queries..." class="message-textarea">
+            </textarea>
+
+            <div class="composer-db-selector">
+              <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+              </svg>
+
+              
+              <div class="custom-dropdown" [class.open]="dbDropdownOpen">
+                <button 
+                  type="button" 
+                  class="custom-dropdown-trigger" 
+                  (click)="toggleDbDropdown($event)">
+                  <span class="trigger-label">{{ selectedDatabase }}</span>
+                  <svg viewBox="0 0 24 24" class="icon-svg small trigger-chevron" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
+                </button>
+
+                <div class="custom-dropdown-menu" *ngIf="dbDropdownOpen">
+                  <div *ngFor="let db of availableDatabases" class="custom-dropdown-item" [class.active]="db === selectedDatabase" (click)="selectDatabase(db)">
+                    <span class="item-check" *ngIf="db === selectedDatabase">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M5 12.5 9.5 17 19 7.5"/>
+                      </svg>
+                    </span>
+                    <span class="item-label">{{ db }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="send-button" [disabled]="isLoading" (click)="sendMessage()" aria-label="Send message">
+              <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14"/>
+                <path d="m13 5 7 7-7 7"/>
+              </svg>
+            </button> 
+          </div>
+
+          <div class="prompt-row">
+            <span>Coba tanyakan:</span>
+            <button *ngFor="let chip of promptChips" type="button" class="request-chip" (click)="selectPromptChip(chip)">{{ chip }}</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div *ngIf="searchModalOpen" class="modal-backdrop">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <svg viewBox="0 0 24 24" class="icon-svg search-modal-icon" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="6"/>
+          <path d="m16 16 4 4"/>
+        </svg>
+        <input type="text" [(ngModel)]="searchQuery" placeholder="Cari data & query..." />
+        <button type="button" class="modal-close" (click)="closeSearchModal()">ESC</button>
+      </div>
+
+      <div class="modal-tags">
+        <span class="tag">Yogyakarta</span>
+        <span class="tag">DELETE</span>
+        <span class="tag">tbl_sekolah</span>
+        <span class="tag">tunggakan</span>
+      </div>
+
+      <div class="modal-list">
+        <button *ngFor="let group of filteredConversations()" type="button" class="result-item">
+          <div class="result-icon">
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5v6A2.5 2.5 0 0 1 14.5 17H9.5A2.5 2.5 0 0 1 7 14.5v-6Z"/>
+              <path d="M9 10h6M9 13h4"/>
+            </svg>
+          </div>
+          <div class="conversation-body">
+            <span class="result-title">{{ group.items[0]?.title ?? 'Hasil pencarian' }}</span>
+            <span class="result-preview">{{ group.items[0]?.preview ?? 'SELECT * FROM tbl_siswa' }}</span>
+          </div>
+          <span class="result-pill">Aktif</span>
+        </button>
+      </div>
+
+      <div class="modal-footer">Gunakan tombol panah ↑↓ untuk navigasi, Enter untuk memilih</div>
+    </div>
+  </div>
+
+  <div *ngIf="schemaPanelOpen" class="schema-backdrop" (click)="schemaPanelOpen = false"></div>
+    <aside class="schema-panel" [class.open]="schemaPanelOpen">
+      <div class="schema-panel-header">
+        <div class="schema-panel-title">
+          <svg viewBox="0 0 24 24" class="icon-svg large" fill="none" stroke="currentColor" stroke-width="1.8">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+          <div>
+            <span class="schema-title-main">Database Explorer</span>
+          </div>
+        </div>
+        <div class="schema-panel-actions">
+
+          <div class="schema-db-selector" *ngIf="availableDatabases.length > 0">
+            <select [(ngModel)]="selectedDatabase" (change)="onDatabaseChange()" class="schema-db-select" title="Pilih Database">
+              <option *ngFor="let db of availableDatabases" [value]="db">
+                {{ db }}
+              </option>
+            </select>
+            <svg viewBox="0 0 24 24" class="icon-svg small schema-db-chevron" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </div>
+
+          <button type="button" class="icon-button" (click)="refreshSchema()" title="Refresh">
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+              <path d="M16 21h5v-5"/>
+            </svg>
+          </button>
+
+          <button type="button" class="icon-button" (click)="schemaPanelOpen = false" title="Tutup">
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="schema-tabs">
+        <button type="button" [class.active]="activeSchemaTab === 'tables'" (click)="setSchemaTab('tables')">
+          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 5h18v14H3zM3 10h18M9 5v14"/>
+          </svg>
+          Tabel ({{ schemaData.tables.length }})
+        </button>
+        <button type="button" [class.active]="activeSchemaTab === 'procedures'" (click)="setSchemaTab('procedures')">
+          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+          </svg>
+          SP ({{ schemaData.procedures.length }})
+        </button>
+        <button type="button" [class.active]="activeSchemaTab === 'views'" (click)="setSchemaTab('views')">
+          <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          View ({{ schemaData.views.length }})
+        </button>
+      </div>
+
+      <div class="schema-search">
+        <div class="schema-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="schema-search-icon">
+            <circle cx="11" cy="11" r="6"/>
+            <path d="m16 16 4 4"/>
+          </svg>
+          <input type="text" [(ngModel)]="schemaSearchQuery" placeholder="Cari..." class="schema-search-input"/>
+        </div>
+      </div>
+
+      <div class="schema-body">
+        <div *ngIf="schemaLoading" class="schema-loading">
+          <span class="loader-dots"><span></span><span></span><span></span></span>
+          Memuat struktur database...
+        </div>
+
+        <div *ngIf="!schemaLoading && activeSchemaTab === 'tables'">
+          <div *ngFor="let table of getFilteredSchemaItems()" class="schema-table-item">
+            <div class="schema-table-header" (click)="toggleTable(table.name)">
+              <svg viewBox="0 0 24 24" 
+                  class="icon-svg small schema-chevron" 
+                  [class.expanded]="expandedTables[table.name]"
+                  fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m9 18 6-6-6-6"/>
+              </svg>
+              <span class="schema-table-name">{{ table.name }}</span>
+              <span class="schema-table-count">{{ table.columns.length }} kolom</span>
+            </div>
+            <div *ngIf="expandedTables[table.name]" class="schema-columns">
+              <div *ngFor="let col of table.columns" class="schema-column-item">
+                <span class="schema-col-name">{{ col.name }}</span>
+                <span class="schema-col-type">{{ col.type }}</span>
+                <span *ngIf="col.isPrimaryKey" class="schema-col-badge pk">Primary Key</span>
+                <span *ngIf="col.isForeignKey" class="schema-col-badge fk">Foreign Key</span>
+                <span *ngIf="!col.nullable" class="schema-col-badge notnull">Not Null</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!schemaLoading && activeSchemaTab === 'procedures'">
+          <div *ngFor="let sp of getFilteredSchemaItems()" class="schema-object-item">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/>
+            </svg>
+            <span class="schema-object-name">{{ sp.name }}</span>
+          </div>
+        </div>
+
+        <div *ngIf="!schemaLoading && activeSchemaTab === 'views'">
+          <div *ngFor="let v of getFilteredSchemaItems()" class="schema-object-item">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span class="schema-object-name">{{ v.name }}</span>
+          </div>
+        </div>
+
+        <div *ngIf="!schemaLoading && getFilteredSchemaItems().length === 0" class="schema-empty">
+          <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 8v5M12 16h.01"/>
+          </svg>
+          <span>Tidak ada data</span>
+        </div>
+      </div>
+    </aside>
+
+      <div *ngIf="rateLimitToastVisible" class="rate-limit-toast">
+        <div class="rate-limit-toast-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 9v4"/>
+            <path d="M12 17h.01"/>
+            <path d="M10.3 3.5 2.8 16.5A2 2 0 0 0 4.5 19h15a2 2 0 0 0 1.7-2.5L13.7 3.5a2 2 0 0 0-3.4 0Z"/>
+          </svg>
+        </div>
+        <div class="rate-limit-toast-content">
+          <div class="rate-limit-toast-title">Batas Request Tercapai</div>
+          <div class="rate-limit-toast-desc">{{ rateLimitToastMessage }}</div>
+        </div>
+        <button type="button" class="rate-limit-toast-close" aria-label="Close notification" (click)="rateLimitToastVisible = false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 6l12 12M18 6 6 18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div *ngIf="shareToastVisible" class="share-toast">
+        <div class="share-toast-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12.5 9.5 17 19 7.5"/>
+          </svg>
+        </div>
+        <div class="share-toast-content">
+          <div class="share-toast-title">Public link copied</div>
+          <div class="share-toast-desc">Anyone with the link can view this conversation.</div>
+        </div>
+        <button type="button" class="share-toast-close" aria-label="Close notification" (click)="shareToastVisible = false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 6l12 12M18 6 6 18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div *ngIf="deleteModalVisible" class="modal-overlay" (click)="cancelDelete()">
+        <div class="delete-modal" (click)="$event.stopPropagation()">
+          <button type="button" class="delete-modal-close" aria-label="Close confirmation" (click)="cancelDelete()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+          </button>
+          <h3 class="delete-modal-title">Delete chat?</h3>
+          <p class="delete-modal-text">
+            This will permanently delete <b>{{ sessionToDeleteTitle }}</b>. This can't be undone.
+          </p>
+          <div class="delete-modal-actions">
+            <button type="button" class="btn-cancel" (click)="cancelDelete()">Cancel</button>
+            <button type="button" class="btn-delete" (click)="confirmDelete()">Delete chat</button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="userPanelOpen" class="user-panel-backdrop" (click)="closeUserPanel()"></div>
+      <aside class="user-panel" [class.open]="userPanelOpen">
+        <div class="user-panel-header">
+          <div class="user-panel-title">
+            <svg viewBox="0 0 24 24" class="icon-svg large" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <div>
+              <span class="user-panel-title-main">Manajemen User</span>
+              <span class="user-panel-title-sub">{{ usersList.length }} user terdaftar</span>
+            </div>
+          </div>
+          <div class="user-panel-actions">
+            <button type="button" class="icon-button" (click)="loadUsers()" title="Refresh">
+              <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                <path d="M16 21h5v-5"/>
+              </svg>
+            </button>
+            <button type="button" class="icon-button" (click)="closeUserPanel()" title="Tutup">
+              <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 6l12 12M18 6 6 18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="user-panel-toolbar">
+          <button type="button" class="toolbar-btn primary" [class.active]="showCreateUserForm" (click)="toggleCreateUserForm()">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Tambah User
+          </button>
+          <button type="button" class="toolbar-btn" [class.active]="showAddRoleForm" (click)="toggleAddRoleForm()">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2 2 7l10 5 10-5-10-5Z"/>
+              <path d="m2 17 10 5 10-5"/>
+              <path d="m2 12 10 5 10-5"/>
+            </svg>
+            Konfigurasi User  
+          </button>
+          <button type="button" class="toolbar-btn danger" [class.active]="showDeleteUserSection" (click)="toggleDeleteUserSection()">
+            <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Hapus User
+          </button>
+        </div>
+
+        <div *ngIf="showCreateUserForm" class="panel-form">
+          <div class="panel-form-title">Tambah User Baru</div>
+
+          <div class="form-row">
+            <label>Username <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newUser.username" placeholder="cth: budi.santoso" class="settings-input" />
+          </div>
+          <div class="form-row">
+            <label>Password <span class="required">*</span></label>
+            <input type="password" [(ngModel)]="newUser.password" placeholder="Minimal 8 karakter" class="settings-input" />
+          </div>
+          <div class="form-row">
+            <label>Nama Lengkap</label>
+            <input type="text" [(ngModel)]="newUser.fullname" placeholder="cth: Budi Santoso" class="settings-input" />
+          </div>
+
+          <div class="form-row">
+            <label>Role 
+              <span class="required">*</span> 
+              <span class="role-hint">(bisa pilih lebih dari satu)</span>
+            </label>
+            <div class="role-checkbox-list">
+              <label *ngFor="let r of availableRoles" class="role-checkbox-item" [class.selected]="newUserRoles.includes(r)">
+                <input type="checkbox" [checked]="newUserRoles.includes(r)" (change)="toggleNewUserRole(r)" />
+                <span>{{ r }}</span>
+              </label>
+            </div>
+          </div>
+
+          <div *ngIf="userFormError" class="form-error">
+            {{ userFormError }}
+          </div>
+          <div *ngIf="userFormSuccess" class="form-success">
+            {{ userFormSuccess }}
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="action-button" (click)="toggleCreateUserForm()">Batal</button>
+            <button type="button" class="primary-button success-button" (click)="submitCreateUser()">Tambah User</button>
+          </div>
+        </div>
+
+        <div *ngIf="showAddRoleForm" class="panel-form">
+          <div class="panel-form-title">Konfigurasi Role & Keaktifan User</div>
+          <div class="form-row">
+            <label>Pilih User <span class="required">*</span></label>
+            <select class="settings-input" [ngModel]="addRoleUserId" (ngModelChange)="onAddRoleUserChange($event)">
+              <option [ngValue]="null">-- Pilih User --</option>
+              <option *ngFor="let u of usersList" [ngValue]="u.user_id">
+                {{ u.fullname || u.username }} (&#64;{{ u.username }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label>Role 
+              <span class="required">*</span> 
+              <span class="role-hint">(centang untuk tambah/hapus)</span>
+            </label>
+            <div class="role-checkbox-list">
+              <label *ngFor="let r of availableRoles" class="role-checkbox-item" [class.selected]="addRoleSelection.includes(r)" [class.disabled]="!addRoleUserId">
+                <input type="checkbox" [checked]="addRoleSelection.includes(r)" [disabled]="!addRoleUserId" (change)="toggleAddRoleSelection(r)" />
+                <span>{{ r }}</span>
+              </label>
+            </div>
+          </div>
+
+          <div *ngIf="addRoleError" class="form-error">
+            {{ addRoleError }}
+          </div>
+          <div *ngIf="addRoleSuccess" class="form-success">
+            {{ addRoleSuccess }}
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="action-button" (click)="toggleAddRoleForm()">Batal</button>
+            <button type="button" class="primary-button success-button" [disabled]="!addRoleUserId" (click)="submitAddRole()">Simpan Perubahan</button>
+          </div>
+        </div>
+
+        <div *ngIf="showDeleteUserSection" class="panel-form danger-form">
+          <div class="panel-form-title danger-title">
+            Hapus User
+          </div>
+          <p class="danger-warning">
+            Tindakan ini akan menghapus user beserta semua history chat-nya, Tidak dapat dibatalkan.
+          </p>
+          <div class="form-row">
+            <label>
+              Pilih User 
+              <span class="required">*</span>
+            </label>
+            <select class="settings-input" [ngModel]="deleteUserId" (ngModelChange)="deleteUserId = $event">
+              <option [ngValue]="null">-- Pilih User --</option>
+              <option *ngFor="let u of usersList" [ngValue]="u.user_id" [disabled]="u.user_id === currentUser?.user_id">
+                {{ u.fullname || u.username }} (&#64;{{ u.username }})
+                {{ u.user_id === currentUser?.user_id ? ' — Akun Anda' : '' }}
+              </option>
+            </select>
+          </div>
+
+          <div *ngIf="getSelectedDeleteUser() as selectedUser" class="delete-preview">
+            <div class="delete-preview-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4"/>
+                <path d="M12 16h.01"/>
+              </svg>
+              <span>User yang akan dihapus:</span>
+            </div>
+            <div class="delete-preview-user">
+              <div class="delete-preview-avatar">
+                {{ (selectedUser.username || '?').charAt(0).toUpperCase() }}
+              </div>
+              <div class="delete-preview-info">
+                <div class="delete-preview-name">{{ selectedUser.fullname || selectedUser.username }}</div>
+                <div class="delete-preview-username">&#64;{{ selectedUser.username }}</div>
+                <div class="delete-preview-roles">
+                  <span *ngFor="let r of parseRoles(selectedUser.role)" class="role-badge">{{ r }}</span>
+                </div>
+              </div>
+            </div>  
+          </div>
+
+          <div *ngIf="deleteError" class="form-error">
+            {{ deleteError }}
+          </div>
+          <div *ngIf="deleteSuccess" class="form-success">
+            {{ deleteSuccess }}
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="action-button" (click)="toggleDeleteUserSection()">Batal</button>
+            <button type="button" class="primary-button danger-button" [disabled]="!deleteUserId" (click)="askDeleteUser()">Hapus User</button>
+          </div>
+        </div>
+
+        <div class="user-panel-search">
+          <div class="schema-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="schema-search-icon">
+              <circle cx="11" cy="11" r="6"/>
+              <path d="m16 16 4 4"/>
+            </svg>
+            <input type="text" placeholder="Cari user..." class="schema-search-input" [(ngModel)]="userSearchQuery" />
+          </div>
+        </div>
+
+        <div class="user-panel-body">
+          <div *ngIf="usersLoading" class="schema-loading">
+            <span class="loader-dots"><span></span><span></span><span></span></span>
+            Memuat daftar user...
+          </div>
+
+          <div *ngIf="usersError && !usersLoading" class="form-error" style="margin: 1rem;">
+            {{ usersError }}
+          </div>
+
+          <div *ngIf="!usersLoading && !usersError && filteredUsers().length === 0" class="schema-empty">
+            <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 8v5M12 16h.01"/>
+            </svg>
+            <span>Belum ada user terdaftar</span>
+          </div>
+
+          <div *ngIf="!usersLoading && !usersError" class="user-list-compact">
+            <div *ngFor="let user of filteredUsers()" class="user-item" [class.inactive]="!user.is_active">
+              <div class="user-item-icon" [class.owner]="parseRoles(user.role).includes('db_owner')">
+                {{ (user.username || '?').charAt(0).toUpperCase() }}
+              </div>
+
+              <div class="user-item-info">
+                <div class="user-item-name">
+                  {{ user.fullname || user.username }}
+                  <span *ngIf="!user.is_active" class="inactive-badge">NONAKTIF</span>
+                </div>
+                <div class="user-item-roles">
+                  <span *ngFor="let r of parseRoles(user.role)" class="role-badge">{{ r }}</span>
+                </div>
+                <div class="user-item-meta">
+                  <svg viewBox="0 0 24 24" class="meta-icon" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2"/>
+                  </svg>
+                  {{ user.last_login ? (user.last_login | slice:0:10) : 'Belum pernah login' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div *ngIf="deleteConfirmModalOpen" class="confirm-modal-overlay" (click)="cancelDeleteConfirm()">
+        <div class="confirm-modal" (click)="$event.stopPropagation()">
+          <button type="button" class="confirm-modal-close" (click)="cancelDeleteConfirm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+          </button>
+
+          <div class="confirm-modal-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.3 3.5 2.8 16.5A2 2 0 0 0 4.5 19h15a2 2 0 0 0 1.7-2.5L13.7 3.5a2 2 0 0 0-3.4 0Z"/>
+              <path d="M12 9v4"/>
+              <path d="M12 17h.01"/>
+            </svg>
+          </div>
+
+          <h3 class="confirm-modal-title">Hapus User?</h3>
+          <p class="confirm-modal-text">
+            Apakah Anda yakin ingin menghapus user
+            {{ getSelectedDeleteUser()?.username }}
+            beserta semua history chat-nya?
+          </p>
+          <p class="confirm-modal-subtext">Tindakan ini tidak dapat dibatalkan.</p>
+
+          <div class="confirm-modal-actions">
+            <button type="button" class="btn-cancel" (click)="cancelDeleteConfirm()">Batal</button>
+            <button type="button" class="btn-delete" (click)="confirmDeleteUser()">Hapus User</button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="logoutModalOpen" class="confirm-modal-overlay" (click)="cancelLogout()">
+        <div class="confirm-modal" (click)="$event.stopPropagation()">
+          <button type="button" class="confirm-modal-close" (click)="cancelLogout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12M18 6 6 18"/>
+            </svg>
+          </button>
+
+          <div class="confirm-modal-icon logout-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </div>
+
+          <h3 class="confirm-modal-title">Log out</h3>
+          <p class="confirm-modal-text">
+            Apakah Anda yakin untuk log out?
+          </p>
+          <p class="confirm-modal-subtext">Anda perlu login kembali untuk mengakses SQL AI Agent.</p>
+
+          <div class="confirm-modal-actions">
+            <button type="button" class="btn-cancel" (click)="cancelLogout()">Batal</button>
+            <button type="button" class="btn-logout" (click)="confirmLogout()">Log out</button>
+          </div>
+        </div>
+      </div>
+
+    <div *ngIf="toastVisible" class="toast">
+      Tersalin!
+    </div>
+</div>
