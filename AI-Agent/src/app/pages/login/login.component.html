@@ -1,0 +1,41 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </svg>
+      </div>
+      <h1>SQL AI Agent</h1>
+      <p>Silakan login untuk menggunakan SQL AI Agent</p>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" class="login-form">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" [(ngModel)]="username" name="username" placeholder="Masukkan username" autocomplete="username" [disabled]="isLoading" />
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" [(ngModel)]="password" name="password" placeholder="Masukkan password" autocomplete="current-password" [disabled]="isLoading"/>
+      </div>
+
+      <div *ngIf="errorMessage" class="login-error">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" [disabled]="isLoading" class="login-btn">
+        {{ isLoading ? 'Memproses...' : 'Login' }}
+      </button>
+    </form>
+
+    <div class="login-footer">
+        <small>
+            Hubungi DB Owner untuk mendapatkan akun
+        </small>
+    </div>
+  </div>
+</div>
