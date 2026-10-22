@@ -68,30 +68,34 @@ npm install -g n8n
 n8n start
 ```
 
-Buka `http://localhost:5678`:
+Buka `http://localhost:5678` dan ikuti **step 2–7** di [`apps/n8n/README.md`](apps/n8n/README.md#setup-lokal-di-windows-recommended):
 
-1. **Setup owner account** (email+password pilihan Anda — untuk login UI n8n saja, lokal).
-2. **Import workflow** — stop n8n (Ctrl+C), lalu dari root repo:
-   ```powershell
-   npm run n8n:import
-   n8n start
-   ```
-   Atau via UI: Workflows → Import from file → pilih tiap file di `apps/n8n/workflows/`.
-3. **Buat credentials** di n8n UI:
-   - **Microsoft SQL account** → isi dengan SQL lokal Anda. Detail field: [`apps/n8n/README.md`](apps/n8n/README.md#4-buat-credentials-di-n8n-ui).
-   - **LLM provider** (OpenAI/Anthropic/dll) → API key provider Anda.
-4. **Relink credential + aktifkan workflow** — buka tiap workflow → relink node MSSQL ke credential baru → toggle **Active**.
+1. Setup owner account n8n.
+2. Enable SQL Server TCP + buat SQL login `n8n_user`.
+3. Buat credentials MSSQL + LLM di n8n UI.
+4. Replace credential ID di workflow JSON.
+5. Import workflow via `npm run n8n:import`.
+6. Link LLM credential + toggle **Active** semua workflow.
 
-Workflow yang belum di-activate = webhook belum terdaftar = frontend akan error `webhook not registered`.
+### 4. Seed user pertama
 
-### 4. Jalankan frontend
+Tabel `dbo.users` yang di-restore sudah berisi user existing tapi password-nya tidak diketahui. Reset salah satu user dengan hash baru — lihat [`database/README.md#seed-user-pertama`](database/README.md#seed-user-pertama).
+
+Verifikasi:
+```powershell
+$body = @{ username = "Nabil"; password = "Nabil2026!" } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:5678/webhook/auth/login" -Method Post -ContentType "application/json" -Body $body
+# success=True + token = login OK
+```
+
+### 5. Jalankan frontend
 
 ```powershell
-cd ..\..\apps\web
+cd apps\web
 npm start
 ```
 
-Buka `http://localhost:4200`.
+Buka `http://localhost:4200` → login dengan user yang Anda reset di step 4.
 
 ## Script root
 
@@ -118,13 +122,17 @@ File `.env` dan `credentials.local.md` sudah di-gitignore. Jangan commit secret.
 
 ## Troubleshooting
 
+Lihat juga [`apps/n8n/README.md#troubleshooting`](apps/n8n/README.md#troubleshooting) untuk detail lengkap.
+
 | Gejala                                              | Fix                                                                 |
 | --------------------------------------------------- | ------------------------------------------------------------------- |
 | `n8n: command not found` setelah install            | Tutup/buka PowerShell lagi, atau cek `npm config get prefix` ada di PATH. |
-| `SQLite package has not been found installed`       | [`apps/n8n/README.md`](apps/n8n/README.md#1-install-dan-start-n8n) — rebuild sqlite3 native binary. |
-| `ResponseError: webhook not registered`             | Workflow di n8n belum di-activate. Toggle **Active** di UI setelah credential ter-link. |
-| Tombol **Active** nolak di-toggle                   | Node MSSQL/LLM masih merah → credential belum di-link. Buka node → pilih credential → Save. |
-| MSSQL error "Login failed for user"                 | Windows Auth gagal — periksa `Domain` di credential (nama komputer), atau pakai SQL Auth. |
+| `SQLite package has not been found installed`       | Rebuild sqlite3 native binary — lihat apps/n8n/README. |
+| `webhook not registered`                            | Workflow belum di-activate di UI.                                   |
+| Tombol **Active** nolak di-toggle                   | Node ada yang merah → credential belum di-link.                     |
+| `Login failed for user 'n8n_user'`                  | Password credential beda dengan SQL login. Re-type di n8n UI (jangan paste). |
+| `Credential with ID "..." does not exist`           | ID credential di workflow JSON masih yang lama. Replace ID + re-import. |
+| `{"message":"Error in workflow"}` dari webhook      | Pesan generik. Cek Executions tab di n8n UI untuk error asli.       |
 
 ## Lisensi
 
