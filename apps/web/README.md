@@ -1,69 +1,50 @@
 # SQL AI — Web Frontend
 
-Angular 22 single-page application untuk SQL AI Data Management agent. Aplikasi ini menyediakan antarmuka chat untuk berinteraksi dengan workflow n8n yang menjalankan agen AI SQL (query generation, confirmation flow, history management, dan user administration).
+Angular 22 SPA untuk SQL AI Data Management agent. Menyediakan chat UI, login, dan user management yang berkomunikasi dengan backend n8n via webhook.
 
 ## Prasyarat
 
-- Node.js 20+
-- npm 11+ (lihat `packageManager` di `package.json`)
-- Backend n8n berjalan dan dapat diakses (default `http://localhost:5678`). Lihat [`apps/n8n`](../n8n/README.md) untuk cara menjalankannya.
+- Node.js 20+ dan npm 11+
+- Backend n8n berjalan di `http://localhost:5678` (lihat [apps/n8n/README.md](../n8n/README.md))
 
 ## Setup
 
-```bash
+```powershell
 npm install
 ```
 
-## Konfigurasi lingkungan
+## Konfigurasi
 
-Konfigurasi runtime diambil dari `src/environments/environment.ts` (development) dan `src/environments/environment.production.ts` (production). Nilai default:
+Config runtime ada di `src/environments/`:
 
-| Variabel            | Development                      | Production  |
-| ------------------- | -------------------------------- | ----------- |
-| `n8nBaseUrl`        | `http://localhost:5678/webhook`  | `/webhook`  |
-| `requestTimeoutMs`  | `60000`                          | `60000`     |
+| File                           | Mode        | `n8nBaseUrl`                       |
+| ------------------------------ | ----------- | ---------------------------------- |
+| `environment.ts`               | development | `http://localhost:5678/webhook`    |
+| `environment.production.ts`    | production  | `/webhook`                         |
 
-Untuk mengganti base URL n8n (misalnya saat deploy ke staging/production), edit file environment yang relevan. Lihat juga `.env.example` di root repo untuk referensi variabel seluruh monorepo.
+Edit file yang relevan untuk mengganti base URL n8n.
 
-## Menjalankan dev server
+## Perintah
 
-```bash
-npm start
+```powershell
+npm start          # dev server di http://localhost:4200
+npm run build      # build production ke dist/
+npm test           # unit test (Vitest)
 ```
 
-Buka `http://localhost:4200`. Aplikasi akan auto-reload setiap kali file source berubah.
-
-## Build production
-
-```bash
-npm run build
-```
-
-Artifact build akan tersimpan di `dist/`.
-
-## Testing
-
-```bash
-npm test
-```
-
-Menggunakan Vitest sebagai test runner.
-
-## Struktur folder
+## Struktur
 
 ```
 src/
 ├── app/
-│   ├── directives/        Direktif kustom (safe-html, dll)
-│   ├── guards/            Route guards (AuthGuard)
-│   ├── pages/             Halaman utama (chat, login)
-│   └── services/          HTTP services (ai, auth)
-├── environments/          File konfigurasi per build mode
+│   ├── directives/        safe-html, dll
+│   ├── guards/            AuthGuard
+│   ├── pages/             chat, login
+│   └── services/          ai.service, auth.service
+├── environments/
 ├── index.html
 ├── main.ts
 └── styles.css
 ```
 
-## Konvensi kode
-
-Lihat [`AGENTS.md`](./AGENTS.md) untuk konvensi TypeScript, Angular, state management, aksesibilitas, dan styling yang berlaku di aplikasi ini.
+Konvensi kode: lihat [`AGENTS.md`](./AGENTS.md).

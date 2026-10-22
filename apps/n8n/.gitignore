@@ -1,16 +1,13 @@
-# Local environment overrides
+# Local env + credentials (JANGAN COMMIT)
 .env
 .env.local
 .env.*.local
+credentials.local.md
+credentials.json
 
-# Docker volume data (jika di-mount lokal)
+# Data volume lokal
 data/
 n8n_data/
-mssql_data/
-
-# Local credential exports
-credentials.json
-credentials/
 
 # OS
 .DS_Store

@@ -1,7 +1,4 @@
-# ---------------------------------------------------------------------------
-# Monorepo root .gitignore
-# App-specific ignores live in apps/*/.gitignore
-# ---------------------------------------------------------------------------
+# Monorepo root gitignore (app-specific pola ada di apps/*/.gitignore)
 
 # Dependencies
 node_modules/
@@ -12,39 +9,30 @@ node_modules/
 dist/
 build/
 out/
-.next/
-.nuxt/
-.svelte-kit/
-.vite/
-.turbo/
 
 # Angular
 .angular/cache
 .sass-cache/
 
-# Testing / coverage
+# Testing
 coverage/
-.nyc_output/
 *.lcov
 
 # Logs
 logs/
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
-# Local env files (NEVER commit secrets)
+# Env + secrets (JANGAN COMMIT)
 .env
 .env.local
 .env.*.local
+credentials.local.md
+credentials.json
 
 # Editor / IDE
 .idea/
 .history/
-*.sublime-workspace
-*.sublime-project
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -52,14 +40,11 @@ pnpm-debug.log*
 !.vscode/extensions.json
 !.vscode/mcp.json
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
-ehthumbs.db
 Desktop.ini
 
-# n8n local runtime data
+# n8n runtime
 apps/n8n/data/
 apps/n8n/n8n_data/
-apps/n8n/mssql_data/
-apps/n8n/credentials.json

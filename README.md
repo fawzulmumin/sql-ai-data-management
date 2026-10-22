@@ -1,100 +1,102 @@
 # SQL AI — Data Management Agent
 
-Monorepo untuk aplikasi **SQL AI Data Management**: sebuah agen AI yang menerima pertanyaan natural language dari user, menerjemahkannya menjadi query SQL, mengeksekusi ke database Microsoft SQL Server, dan mengembalikan hasil beserta narasi. Mendukung manajemen user, role-based access control, chat history, dan konfirmasi untuk operasi destruktif.
+Monorepo untuk **SQL AI Data Management**: agen AI yang menerima pertanyaan natural language, menerjemahkannya jadi SQL, mengeksekusi ke Microsoft SQL Server, dan mengembalikan hasil + narasi. Lengkap dengan auth, role-based access, chat history, dan konfirmasi untuk operasi destruktif.
 
 ## Arsitektur
 
 ```
 ┌────────────────┐   HTTP   ┌──────────────────┐    SQL     ┌──────────────┐
 │  apps/web      │ ───────► │   apps/n8n       │ ─────────► │  SQL Server  │
-│  (Angular 22)  │          │  (workflows)     │            │  (MSSQL)     │
+│  (Angular 22)  │          │  (workflows)     │            │              │
 └────────────────┘          └──────────────────┘            └──────────────┘
                                      │
                                      ▼
                              ┌──────────────┐
-                             │  LLM / OAI   │
+                             │  LLM Agent   │
                              └──────────────┘
 ```
 
-- **`apps/web`** — Angular 22 SPA. Frontend chat, login, user management.
-- **`apps/n8n`** — kumpulan workflow n8n (auth, SQL agent, chat history, DB explorer) + `docker-compose.yml` untuk menjalankan n8n + Microsoft SQL Server lokal.
+- `apps/web` — Angular 22 SPA (chat, login, user management).
+- `apps/n8n` — workflow n8n (auth, SQL agent, chat history, DB explorer).
 
 ## Struktur repo
 
 ```
 sql-ai-data-management/
 ├── apps/
-│   ├── web/              # Angular SPA frontend
-│   └── n8n/              # n8n workflows + docker compose
+│   ├── web/              Angular SPA
+│   └── n8n/              n8n workflows + docker-compose
 ├── .editorconfig
-├── .env.example          # Referensi env vars seluruh monorepo
 ├── .gitignore
 ├── LICENSE
-├── package.json          # npm workspaces root
+├── package.json          npm workspaces
 └── README.md
 ```
 
 ## Prasyarat
 
-- **Node.js** 20+ dan **npm** 11+ (untuk `apps/web`).
-- **Docker** + **Docker Compose** (untuk `apps/n8n`).
-- **Microsoft SQL Server** (otomatis via docker-compose, atau instance eksisting).
-- **OpenAI API Key** (atau provider LLM lain yang dikonfigurasi di workflow `SQL AI Agent`).
+- Node.js 20+ dan npm 11+
+- Microsoft SQL Server (lokal atau remote)
+- (Opsional) Docker Desktop — untuk mode container
 
-## Quick start
+## Quick start (lokal Windows)
 
-### 1. Clone & install
+Skenario default: SQL Server 2022 lokal + Windows Authentication.
 
-```bash
+### 1. Clone dan install
+
+```powershell
 git clone https://github.com/fawzulmumin/sql-ai-data-management.git
 cd sql-ai-data-management
 npm install
 ```
 
-`npm install` di root akan install dependency untuk semua workspace (`apps/*`).
+### 2. Jalankan backend n8n
 
-### 2. Jalankan backend (n8n + MSSQL)
+```powershell
+cd apps\n8n
+copy .env.example .env
+# edit .env — minimal isi N8N_ENCRYPTION_KEY
 
-```bash
-cp apps/n8n/.env.example apps/n8n/.env
-# Edit apps/n8n/.env — isi N8N_ENCRYPTION_KEY, MSSQL_PASSWORD, OPENAI_API_KEY, dst.
-
-npm run n8n:up
+npm install -g n8n
+n8n start
 ```
 
-Setelah container up, buka `http://localhost:5678` → import semua file dari `apps/n8n/workflows/` → konfigurasi credential Microsoft SQL account.
+Buka `http://localhost:5678`:
 
-Detail lengkap: lihat [`apps/n8n/README.md`](apps/n8n/README.md).
+1. Import semua file di `apps/n8n/workflows/`.
+2. Buat credential **Microsoft SQL account** → isi dengan SQL lokal Anda (lihat [apps/n8n/README.md](apps/n8n/README.md#3-konfigurasi-credential-di-n8n-ui)).
+3. Buat credential **LLM provider** untuk workflow `SQL AI Agent`.
+4. Aktifkan semua workflow (toggle Active).
 
 ### 3. Jalankan frontend
 
-```bash
+```powershell
+cd ..\..
 npm run web:start
 ```
 
 Buka `http://localhost:4200`.
 
-Detail lengkap: lihat [`apps/web/README.md`](apps/web/README.md).
+## Script root
 
-## Script root (via `npm run …`)
-
-| Script         | Deskripsi                                           |
-| -------------- | --------------------------------------------------- |
-| `web:start`    | Jalankan Angular dev server (port 4200).            |
-| `web:build`    | Build production bundle `apps/web`.                 |
-| `web:test`     | Jalankan unit test Angular (Vitest).                |
-| `n8n:up`       | Start stack n8n + MSSQL via Docker Compose.         |
-| `n8n:down`     | Stop stack n8n + MSSQL.                             |
-| `n8n:logs`     | Tail logs container n8n + MSSQL.                    |
+| Script         | Deskripsi                                     |
+| -------------- | --------------------------------------------- |
+| `web:start`    | Angular dev server (port 4200).               |
+| `web:build`    | Build production bundle apps/web.             |
+| `web:test`     | Unit test Angular (Vitest).                   |
+| `n8n:up`       | Jalankan n8n via Docker Compose.              |
+| `n8n:down`     | Stop container n8n.                           |
+| `n8n:logs`     | Tail logs container n8n.                      |
 
 ## Environment variables
 
-Referensi variabel seluruh monorepo ada di [`.env.example`](.env.example) (root). Masing-masing app juga punya `.env.example` sendiri:
+- `apps/n8n/.env` (dari `.env.example`) — config startup n8n.
+- `apps/web/src/environments/environment.ts` — base URL n8n untuk frontend.
 
-- [`apps/n8n/.env.example`](apps/n8n/.env.example) — vars untuk n8n + MSSQL + OpenAI.
-- `apps/web` — tidak pakai `.env`; konfigurasi di `src/environments/environment.ts` dan `environment.production.ts`.
+Credential SQL Server dan LLM API key **tidak** disimpan di `.env`. Dikonfigurasi via UI n8n (Credentials vault), dienkripsi pakai `N8N_ENCRYPTION_KEY`.
 
-**Jangan commit** file `.env` yang sudah terisi secret. `.gitignore` sudah menutup semua pola `.env*`.
+File `.env` dan `credentials.local.md` sudah di-gitignore. Jangan commit secret.
 
 ## Lisensi
 

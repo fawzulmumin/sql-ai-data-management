@@ -16,26 +16,11 @@ services:
       - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/workflows:ro
-    depends_on:
-      - mssql
-
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sql-ai-mssql
-    restart: unless-stopped
-    ports:
-      - "${MSSQL_PORT:-1433}:1433"
-    environment:
-      - ACCEPT_EULA=${ACCEPT_EULA:-Y}
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
-      - MSSQL_PID=Developer
-    volumes:
-      - mssql_data:/var/opt/mssql
 
 volumes:
   n8n_data:
-  mssql_data:
