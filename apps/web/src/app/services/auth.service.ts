@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface AuthUser {
   user_id: number;
@@ -11,7 +12,7 @@ export interface AuthUser {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly AUTH_BASE = 'http://localhost:5678/webhook/auth'; 
+  private readonly AUTH_BASE = `${environment.n8nBaseUrl}/auth`;
 
   constructor(private http: HttpClient) {}
 

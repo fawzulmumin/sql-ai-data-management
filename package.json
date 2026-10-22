@@ -1,0 +1,22 @@
+{
+  "name": "sql-ai-data-management",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo untuk SQL AI Data Management agent (Angular frontend + n8n workflow backend).",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fawzulmumin/sql-ai-data-management.git"
+  },
+  "license": "MIT",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "web:start": "npm --workspace @sql-ai/web run start",
+    "web:build": "npm --workspace @sql-ai/web run build",
+    "web:test": "npm --workspace @sql-ai/web run test",
+    "n8n:up": "docker compose -f apps/n8n/docker-compose.yml --env-file apps/n8n/.env up -d",
+    "n8n:down": "docker compose -f apps/n8n/docker-compose.yml --env-file apps/n8n/.env down",
+    "n8n:logs": "docker compose -f apps/n8n/docker-compose.yml --env-file apps/n8n/.env logs -f"
+  }
+}

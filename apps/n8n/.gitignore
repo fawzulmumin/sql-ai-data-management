@@ -1,0 +1,17 @@
+# Local environment overrides
+.env
+.env.local
+.env.*.local
+
+# Docker volume data (jika di-mount lokal)
+data/
+n8n_data/
+mssql_data/
+
+# Local credential exports
+credentials.json
+credentials/
+
+# OS
+.DS_Store
+Thumbs.db
