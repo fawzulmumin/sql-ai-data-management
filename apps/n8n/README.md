@@ -29,6 +29,16 @@ n8n start
 
 Buka `http://localhost:5678`.
 
+> **Troubleshoot `SQLite package has not been found installed`.** Install global
+> n8n di Windows kadang skip build native sqlite3. Fix:
+>
+> ```powershell
+> cd "$(npm root -g)\n8n\node_modules\sqlite3"
+> npx --yes prebuild-install -r napi
+> ```
+>
+> Lalu `n8n start` lagi.
+
 ### 2. Import workflow
 
 Workflows → Import from file → pilih semua file di `apps/n8n/workflows/`.
