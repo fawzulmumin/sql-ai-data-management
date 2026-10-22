@@ -1,10 +1,12 @@
 {
-  "name": "ai-agent",
-  "version": "0.0.0",
+  "name": "@sql-ai/web",
+  "version": "0.1.0",
+  "description": "Angular SPA frontend for the SQL AI Data Management agent.",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:dev": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface AiResponse {
   status_text: string;
@@ -34,14 +35,15 @@ export interface AIRequest {
 })
 
 export class AiService {
-  private readonly N8N_URL = 'http://localhost:5678/webhook/sql-agent';
-  private readonly N8N_DATABASES_URL = 'http://localhost:5678/webhook/databases';
-  private readonly N8N_SCHEMA_URL = 'http://localhost:5678/webhook/schema';
-  private readonly N8N_SAVE_MESSAGE_URL = 'http://localhost:5678/webhook/save-message';
-  private readonly N8N_SESSIONS_URL = 'http://localhost:5678/webhook/sessions';
-  private readonly N8N_HISTORY_URL = 'http://localhost:5678/webhook/history';
-  private readonly N8N_DELETE_SESSION_URL = 'http://localhost:5678/webhook/delete-session';
-  private readonly TIMEOUT_MS = 60000;
+  private readonly BASE = environment.n8nBaseUrl;
+  private readonly N8N_URL = `${this.BASE}/sql-agent`;
+  private readonly N8N_DATABASES_URL = `${this.BASE}/databases`;
+  private readonly N8N_SCHEMA_URL = `${this.BASE}/schema`;
+  private readonly N8N_SAVE_MESSAGE_URL = `${this.BASE}/save-message`;
+  private readonly N8N_SESSIONS_URL = `${this.BASE}/sessions`;
+  private readonly N8N_HISTORY_URL = `${this.BASE}/history`;
+  private readonly N8N_DELETE_SESSION_URL = `${this.BASE}/delete-session`;
+  private readonly TIMEOUT_MS = environment.requestTimeoutMs;
 
   constructor(
     private http: HttpClient,
@@ -245,7 +247,7 @@ export class AiService {
     if (error.name === 'TimeoutError') {
       errorMessage = 'Request timeout. Server AI tidak merespons.';
     } else if (error.status === 0) {
-      errorMessage = 'Tidak dapat terhubung ke n8n. Pastikan n8n berjalan di http://localhost:5678';
+      errorMessage = `Tidak dapat terhubung ke n8n. Pastikan n8n berjalan di ${environment.n8nBaseUrl}`;
     } else if (error.status === 404) {
       errorMessage = 'Webhook tidak ditemukan. Cek path webhook di n8n.';
     } else if (error.status === 500) {

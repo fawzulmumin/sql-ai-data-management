@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "AI-Agent": {
+    "web": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -44,7 +44,13 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.production.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,
@@ -58,10 +64,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "AI-Agent:build:production"
+              "buildTarget": "web:build:production"
             },
             "development": {
-              "buildTarget": "AI-Agent:build:development"
+              "buildTarget": "web:build:development"
             }
           },
           "defaultConfiguration": "development"
