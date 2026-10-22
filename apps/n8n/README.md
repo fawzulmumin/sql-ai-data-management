@@ -13,6 +13,7 @@ Semua workflow terhubung ke Microsoft SQL Server via node `n8n-nodes-base.micros
 
 - Node.js 20+ (untuk n8n native) **atau** Docker Desktop (untuk mode container).
 - Microsoft SQL Server lokal/remote yang bisa diakses.
+- Database `TestDB` (+ opsional `TestDB4`) sudah di-restore. Lihat [`../../database/README.md`](../../database/README.md).
 
 ## Setup lokal di Windows (recommended)
 
@@ -39,11 +40,32 @@ Buka `http://localhost:5678`.
 >
 > Lalu `n8n start` lagi.
 
-### 2. Import workflow
+### 2. Setup owner account (first-time only)
 
-Workflows → Import from file → pilih semua file di `apps/n8n/workflows/`.
+Pertama kali buka UI, n8n minta Anda **buat owner account** (email + password pilihan Anda sendiri, disimpan lokal di `~/.n8n/database.sqlite`). Ini akun untuk login ke UI editor n8n saja — tidak ada hubungan dengan akun aplikasi SQL AI (yang tersimpan di tabel `dbo.users` SQL Server).
 
-### 3. Konfigurasi credential di n8n UI
+Isi apa saja, misal:
+- Email: `admin@local.test`
+- Password: `(bebas, min 8 karakter)`
+
+Setelah submit, Anda masuk ke UI n8n kosong.
+
+### 3. Import workflow
+
+Opsi A — via CLI (lebih cepat, 1 command):
+
+```powershell
+# PASTIKAN n8n STOP dulu (Ctrl+C di terminal n8n), karena sqlite lock
+npm run n8n:import
+# → "Successfully imported 9 workflows"
+# Lalu start lagi: n8n start
+```
+
+Opsi B — via UI:
+
+Workflows → menu `⋯` → Import from file → pilih tiap file di `apps/n8n/workflows/` satu per satu.
+
+### 4. Buat credentials di n8n UI
 
 Credential **tidak** disimpan di `.env`. Masuk ke **Credentials → New** di UI n8n.
 
@@ -75,6 +97,25 @@ Jika pakai SQL Authentication (mixed-mode) alih-alih Windows Auth, isi `User` + 
 | ----------- | --------------------------------------------------------------------- |
 | API Key     | *(key dari provider)*                                                 |
 | Base URL    | *(gateway custom bila ada, mis. `https://api.rindri.com/`)*           |
+
+### 5. Relink credential + aktifkan workflow
+
+Workflow yang di-import mereferensikan credential ID lama dari developer sebelumnya, jadi harus di-relink dulu:
+
+Untuk tiap workflow (ada 9) — Workflows → klik workflow → klik tiap node MSSQL yang menyala merah → **Credential to connect with** → pilih credential MS SQL yang baru Anda buat → **Save**. Lakukan hal yang sama untuk node OpenAI/LLM di workflow `SQL AI Agent`.
+
+Setelah semua node sudah berpasangan credential:
+
+Toggle **Active** di pojok kanan atas tiap workflow (biar webhook-nya terdaftar).
+
+Verifikasi webhook sudah hidup:
+
+```powershell
+curl http://localhost:5678/webhook/databases
+# harus balas JSON daftar database, bukan error "webhook not registered"
+```
+
+Error **"The requested webhook ... is not registered"** = workflow belum di-activate.
 
 ## Setup via Docker
 
@@ -109,19 +150,9 @@ docker compose down -v      # hapus volume (reset total)
 | `Update Message.json`          | Update status/konten pesan.                  |
 | `Delete Session.json`          | Hapus session + pesannya.                    |
 
-## Skema database
+## Webhook endpoints
 
-Workflow mengharapkan tabel-tabel ini sudah ada di database target:
-
-- `dbo.users (user_id, username, password, fullname, role, is_active, last_login)`
-- `dbo.chat_sessions (session_id, user_id, …)`
-- `dbo.chat_messages (message_id, session_id, type, content, sql, status_type, metadata, data, database, user_id, …)`
-
-DDL belum di-vendor; siapkan skema manual sebelum workflow dieksekusi.
-
-## Webhook
-
-URL webhook yang di-expose n8n (dipakai frontend):
+URL yang di-expose n8n (dipakai frontend):
 
 ```
 POST  /webhook/auth/login
