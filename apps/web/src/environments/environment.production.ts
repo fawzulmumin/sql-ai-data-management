@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  n8nBaseUrl: '/webhook',
+  n8nBaseUrl: '/sql-ai/webhook',
   requestTimeoutMs: 60_000,
 };
