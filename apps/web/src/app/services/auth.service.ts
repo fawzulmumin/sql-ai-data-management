@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { switchMap, timeout } from 'rxjs/operators';
+import { timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface AuthUser {
@@ -30,18 +30,11 @@ export class AuthService {
   constructor(private http: HttpClient) {}
 
   login(username: string, password: string): Observable<AuthLoginResponse | null> {
-    return this.http.get<any>('https://api.ipify.org?format=json').pipe(
-      switchMap((ipRes: any) => {
-        const userIp = ipRes?.ip || 'Unknown';
-
-        return this.http.post<AuthLoginResponse | null>(`${this.AUTH_BASE}/login`, {
-          username,
-          password,
-          ip_address: userIp
-        }).pipe(
-          timeout(environment.requestTimeoutMs)
-        );
-      })
+    return this.http.post<AuthLoginResponse | null>(`${this.AUTH_BASE}/login`, {
+      username,
+      password
+    }).pipe(
+      timeout(environment.requestTimeoutMs)
     );
   }
 
@@ -68,8 +61,13 @@ export class AuthService {
     const token = this.getToken();
     if (!token) return false;
     try {
-      const payload = JSON.parse(atob(token));
-      return payload.exp > Math.floor(Date.now() / 1000);
+      const parts = token.split('.');
+      // JWT (header.payload.signature) atau legacy base64 payload
+      const payloadB64 = parts.length === 3 ? parts[1] : token;
+      const padded = payloadB64 + '='.repeat((4 - payloadB64.length % 4) % 4);
+      const normalized = padded.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(normalized));
+      return typeof payload?.exp === 'number' && payload.exp > Math.floor(Date.now() / 1000);
     } catch {
       return false;
     }

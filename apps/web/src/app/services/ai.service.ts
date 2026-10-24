@@ -50,9 +50,18 @@ export class AiService {
     private auth: AuthService
   ) {}
 
+  private static readonly SESSION_ID_RE = /^web-\d+-[a-z0-9]+$/;
+
+  private assertValidSessionId(sessionId: string): void {
+    if (!AiService.SESSION_ID_RE.test(sessionId)) {
+      throw new Error('Format sessionId tidak valid.');
+    }
+  }
+
   deleteSessionFromDB(sessionId: string): Observable<any> {
+    this.assertValidSessionId(sessionId);
     return this.http.post(this.N8N_DELETE_SESSION_URL, { sessionId });
-  } 
+  }
 
   saveMessageToHistory(payload: {
     sessionId: string;
@@ -114,10 +123,11 @@ export class AiService {
   }
 
   getHistory(sessionId: string): Observable<any> {
+    this.assertValidSessionId(sessionId);
     const user = this.auth.getCurrentUser();
     const userId = user?.user_id || null;
-    
-    return this.http.get(`${this.N8N_HISTORY_URL}?sessionId=${sessionId}&userId=${userId}`, {
+
+    return this.http.get(`${this.N8N_HISTORY_URL}?sessionId=${encodeURIComponent(sessionId)}&userId=${userId}`, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
     }).pipe(
       timeout(this.TIMEOUT_MS),
@@ -145,7 +155,7 @@ export class AiService {
       fileBase64: fileBase64
     };
     
-    console.log('📤 POST to n8n:', this.N8N_URL, body);
+    if (!environment.production) console.debug('[ai] request:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -169,7 +179,7 @@ export class AiService {
       pending_id: pending_id,
       database: database || 'TestDB'
     };
-    console.log('CONFIRM to n8n:', body);
+    if (!environment.production) console.debug('[ai] confirm:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -186,7 +196,7 @@ export class AiService {
       query,
       database: database || 'TestDB'
     };
-    console.log('CANCEL to n8n:', body);
+    if (!environment.production) console.debug('[ai] cancel:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -205,7 +215,7 @@ export class AiService {
       direct_execute: true
     };
     
-    console.log('⚡ DIRECT EXECUTE:', body);
+    if (!environment.production) console.debug('[ai] direct-execute:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -216,7 +226,7 @@ export class AiService {
   }
 
   getDatabases(): Observable<{ databases: string[]; total: number }> {
-    console.log('📤 GET databases from:', this.N8N_DATABASES_URL);
+    if (!environment.production) console.debug('[ai] get databases');
 
     return this.http.get<{ databases: string[]; total: number }>(this.N8N_DATABASES_URL, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -228,7 +238,7 @@ export class AiService {
 
   getSchema(database: string): Observable<any> {
     const url = this.N8N_SCHEMA_URL + '?database=' + encodeURIComponent(database);
-    console.log('📤 GET schema from:', url);
+    if (!environment.production) console.debug('[ai] get schema:', database);
 
     return this.http.get<any>(url, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
