@@ -50,7 +50,7 @@ Skenario default: SQL Server 2022 lokal + Windows Authentication.
 ```powershell
 git clone https://github.com/fawzulmumin/sql-ai-data-management.git
 cd sql-ai-data-management
-npm install
+cd apps\web && npm install && cd ..\..
 ```
 
 ### 2. Restore database
@@ -101,6 +101,7 @@ Buka `http://localhost:4200` → login dengan user yang Anda reset di step 4.
 
 | Script         | Deskripsi                                        |
 | -------------- | ------------------------------------------------ |
+| `web:install`  | Install dependency apps/web.                     |
 | `web:start`    | Angular dev server (port 4200).                  |
 | `web:build`    | Build production bundle apps/web.                |
 | `web:test`     | Unit test Angular (Vitest).                      |
@@ -133,6 +134,10 @@ Lihat juga [`apps/n8n/README.md#troubleshooting`](apps/n8n/README.md#troubleshoo
 | `Login failed for user 'n8n_user'`                  | Password credential beda dengan SQL login. Re-type di n8n UI (jangan paste). |
 | `Credential with ID "..." does not exist`           | ID credential di workflow JSON masih yang lama. Replace ID + re-import. |
 | `{"message":"Error in workflow"}` dari webhook      | Pesan generik. Cek Executions tab di n8n UI untuk error asli.       |
+
+## Security
+
+Lihat [`SECURITY.md`](SECURITY.md) untuk status audit terakhir, follow-up yang belum di-apply, dan cara reporting vulnerability baru.
 
 ## Lisensi
 
