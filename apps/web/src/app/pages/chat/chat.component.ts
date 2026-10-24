@@ -248,8 +248,8 @@ export class ChatComponent implements OnInit {
 
     const urlParams = new URLSearchParams(window.location.search);
     const sharedSessionId = urlParams.get('session');
-    
-    if (sharedSessionId) {
+
+    if (sharedSessionId && /^web-\d+-[a-z0-9]+$/.test(sharedSessionId)) {
       setTimeout(() => this.loadSession(sharedSessionId), 1000);
     }
   }
@@ -271,46 +271,76 @@ export class ChatComponent implements OnInit {
     this.openSearchModal();
   }
 
+  private static readonly MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+  private static readonly ALLOWED_UPLOAD_MIME = new Set([
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'text/csv',
+    'application/csv',
+    'application/pdf',
+    '',
+  ]);
+
+  private showFileError(message: string): void {
+    this.fileErrorMessage = message;
+    this.fileErrorToastVisible = true;
+    setTimeout(() => {
+      this.fileErrorToastVisible = false;
+      this.cdr.detectChanges();
+    }, 4000);
+    this.removeSelectedFile();
+  }
+
   onFileSelected(event: any) {
-    const file = event.target.files[0];
+    const file = event.target.files[0] as File | undefined;
     if (!file) return;
 
+    const lowerName = file.name.toLowerCase();
+    const extAllowed = ['.xlsx', '.xls', '.csv', '.pdf'].some(ext => lowerName.endsWith(ext));
+    if (!extAllowed) {
+      this.showFileError('Format file tidak didukung. Harap unggah file dengan format Excel (.xlsx, .xls), CSV, atau PDF.');
+      return;
+    }
+    if (!ChatComponent.ALLOWED_UPLOAD_MIME.has(file.type)) {
+      this.showFileError(`MIME file tidak diizinkan: ${file.type || 'unknown'}.`);
+      return;
+    }
+    if (file.size > ChatComponent.MAX_UPLOAD_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      this.showFileError(`Ukuran file ${mb} MB melebihi batas 5 MB.`);
+      return;
+    }
+
     this.selectedFile = file;
-    
-    if (file.name.endsWith('.xlsx') || file.name.endsWith('.csv') || file.name.endsWith('.xls')) {
+
+    if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv') || lowerName.endsWith('.xls')) {
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        const headers = rawArray[0] as string[]; 
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const headers = rawArray[0] as string[];
 
-        this.parsedFileData = rawArray.slice(1).map((row: any) => {
-            let obj: any = {};
-            headers.forEach((header, index) => {
-                obj[header] = row[index];
-            });
+          this.parsedFileData = rawArray.slice(1).map((row: any) => {
+            const obj: any = {};
+            headers.forEach((header, index) => { obj[header] = row[index]; });
             return obj;
-        });
-        this.messageText = `Tolong masukkan data dari file ${file.name} ini ke tabel `;
-        this.cdr.detectChanges();
+          });
+          this.messageText = `Tolong masukkan data dari file ${file.name} ini ke tabel `;
+          this.cdr.detectChanges();
+        } catch {
+          this.showFileError('File tidak bisa diparse. Pastikan format Excel/CSV valid.');
+        }
       };
+      reader.onerror = () => this.showFileError('Gagal membaca file.');
       reader.readAsArrayBuffer(file);
-    }
-    else if (file.name.endsWith('.pdf')) {
-      this.parsedFileData = []; 
+    } else {
+      this.parsedFileData = [];
       this.messageText = `Tolong baca dan masukkan data dari file PDF ${file.name} ini ke tabel `;
       this.cdr.detectChanges();
-    } else {
-      this.fileErrorMessage = 'Format file tidak didukung. Harap unggah file dengan format Excel (.xlsx, .xls), CSV, atau PDF.';
-      this.fileErrorToastVisible = true;
-      setTimeout(() => {
-        this.fileErrorToastVisible = false;
-        this.cdr.detectChanges();
-      }, 4000);
-      this.removeSelectedFile();
     }
   }
 
