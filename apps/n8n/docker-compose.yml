@@ -4,7 +4,8 @@ services:
     container_name: sql-ai-n8n
     restart: unless-stopped
     ports:
-      - "${N8N_PORT:-5678}:5678"
+      # Dev: bind hanya ke 127.0.0.1 supaya tidak accessible dari LAN. Hapus "127.0.0.1:" untuk production.
+      - "127.0.0.1:${N8N_PORT:-5678}:5678"
     environment:
       - N8N_HOST=${N8N_HOST:-localhost}
       - N8N_PORT=${N8N_PORT:-5678}
@@ -13,9 +14,13 @@ services:
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Asia/Jakarta}
       - TZ=${TZ:-Asia/Jakarta}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-}
+      - JWT_SECRET=${JWT_SECRET}
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
+      - N8N_CORS_ALLOW_ORIGIN=${N8N_CORS_ALLOW_ORIGIN:-http://localhost:4200}
+      # Bind hanya ke localhost (lebih aman di dev; hapus untuk expose ke LAN)
+      - N8N_LISTEN_ADDRESS=0.0.0.0
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
