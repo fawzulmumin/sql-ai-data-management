@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { switchMap, timeout } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface AuthUser {
@@ -10,14 +11,38 @@ export interface AuthUser {
   role: string;
 }
 
+export interface AuthLoginResponse {
+  success?: boolean;
+  status?: number | string;
+  token?: string;
+  user?: AuthUser;
+  error?: string;
+  message?: string;
+  error_code?: string;
+  code?: string;
+  status_type?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly AUTH_BASE = `${environment.n8nBaseUrl}/auth`;
 
   constructor(private http: HttpClient) {}
 
-  login(username: string, password: string): Observable<any> {
-    return this.http.post(`${this.AUTH_BASE}/login`, { username, password });
+  login(username: string, password: string): Observable<AuthLoginResponse | null> {
+    return this.http.get<any>('https://api.ipify.org?format=json').pipe(
+      switchMap((ipRes: any) => {
+        const userIp = ipRes?.ip || 'Unknown';
+
+        return this.http.post<AuthLoginResponse | null>(`${this.AUTH_BASE}/login`, {
+          username,
+          password,
+          ip_address: userIp
+        }).pipe(
+          timeout(environment.requestTimeoutMs)
+        );
+      })
+    );
   }
 
   saveSession(token: string, user: AuthUser): void {
@@ -59,32 +84,32 @@ export class AuthService {
 
   listUsers(): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/list-users`, 
-      {}, 
+      `${this.AUTH_BASE}/list-users`,
+      {},
       { headers: this.getAuthHeaders() }
     );
   }
 
   createUser(payload: any): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/create-user`, 
-      payload, 
+      `${this.AUTH_BASE}/create-user`,
+      payload,
       { headers: this.getAuthHeaders() }
     );
   }
 
   updateUserRole(userId: number, role: string): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/update-role`, 
-      { user_id: userId, role }, 
+      `${this.AUTH_BASE}/update-role`,
+      { user_id: userId, role },
       { headers: this.getAuthHeaders() }
     );
   }
 
   deleteUser(userId: number): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/delete-user`, 
-      { user_id: userId }, 
+      `${this.AUTH_BASE}/delete-user`,
+      { user_id: userId },
       { headers: this.getAuthHeaders() }
     );
   }

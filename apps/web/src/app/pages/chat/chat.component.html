@@ -1085,13 +1085,37 @@
                   </div>
                 </div>
 
+                <div class="data-export-footer">
+                  <span class="export-label">
+                    <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Ekspor Data:
+                  </span>
+                  <div class="export-buttons">
+                    <button type="button" class="export-btn excel-btn" (click)="exportToExcel(message.data || [], 'Data_Export')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                      Excel
+                    </button>
+                    <button type="button" class="export-btn csv-btn" (click)="exportToCSV(message.data || [], 'Data_Export')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></svg>
+                      CSV
+                    </button>
+                    <button type="button" class="export-btn pdf-btn" (click)="exportToPDF(message.data || [], 'Data_Export')">
+                      <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-4h2a2 2 0 0 1 0 4H9z"/><path d="M15 15h-2v-4h2"/></svg>
+                      PDF
+                    </button>
+                  </div>
+                </div>
+
                 <div class="query-pre">
                   <div class="query-header">
                     <div class="query-header-left">
                       <span class="status-indicator" style="background:#10B981"></span>
                       <span>SQL Query</span>
                     </div>
-
                     <button type="button" class="inline-action" (click)="copySql(message.sql ?? '')">
                       <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="9" y="9" width="11" height="11" rx="2"/>
@@ -1099,21 +1123,35 @@
                       </svg>
                       Salin
                     </button>
-
-                    <button type="button" class="inline-action" (click)="exportToExcel(message.data || [], 'Data_Export')">
-                      Excel
-                    </button>
-
-                    <button type="button" class="inline-action" (click)="exportToCSV(message.data || [], 'Data_Export')">
-                      CSV
-                    </button>
-
-                    <button type="button" class="inline-action" (click)="exportToPDF(message.data || [], 'Data_Export')">
-                      PDF
-                    </button>
-                  
                   </div>
                   <pre><code>{{ message.sql }}</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="message.type === 'ai' && message.status_type === 'import_success'" class="message-ai">
+              <div class="import-success-card">
+                <div class="import-success-header">
+                  <div class="import-success-icon">
+                    <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <path d="M9 15l2 2 4-4"/> 
+                    </svg>
+                  </div>
+                  <div class="import-success-title">
+                    <h3>{{ message.status_text }}</h3>
+                    <span>{{ message.timestamp }}</span>
+                  </div>
+                </div>
+                
+                <p class="import-success-text">{{ message.narrative }}</p>
+                
+                <div class="import-success-footer">
+                  <svg viewBox="0 0 24 24" class="icon-svg small" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                  Data telah diverifikasi dan disimpan dengan aman.
                 </div>
               </div>
             </div>
@@ -1166,7 +1204,7 @@
               </div>
             </div>
 
-            <div *ngIf="message.type === 'ai' && !message.draftQuery && !isConfirmType(message.status_type) && !isStatusType(message.status_type, 'forbidden') && !isStatusType(message.status_type, 'unauthorized') &&!isStatusType(message.status_type, 'creation') && !isStatusType(message.status_type, 'approved') && !isStatusType(message.status_type, 'clarification') && !isDataDisplayQuery(message.sql) && !isStatusType(message.status_type, 'danger') && !(message.status_type === 'rate_limit') && !isSpRenameQuery(message.sql) && !isCreateTableQuery(message.sql) && !isAlterTableQuery(message.sql)" class="message-ai" >
+            <div *ngIf="message.type === 'ai' && !message.draftQuery && !isConfirmType(message.status_type) && !isStatusType(message.status_type, 'forbidden') && !isStatusType(message.status_type, 'unauthorized') &&!isStatusType(message.status_type, 'creation') && !isStatusType(message.status_type, 'approved') && !isStatusType(message.status_type, 'clarification') && !isDataDisplayQuery(message.sql) && !isStatusType(message.status_type, 'danger') && !(message.status_type === 'rate_limit') && !(message.status_type === 'import_success') && !isSpRenameQuery(message.sql) && !isCreateTableQuery(message.sql) && !isAlterTableQuery(message.sql)" class="message-ai" >
               <div class="ai-message">
                 <div class="ai-message-top">
                   <span class="ai-status" [class.success]="isStatusType(message.status_type, 'success')" [class.warning]="isStatusType(message.status_type, 'warning')" [class.danger]="isStatusType(message.status_type, 'danger')" [class.info]="isStatusType(message.status_type, 'info')">
@@ -1244,6 +1282,19 @@
       <div class="composer">
         <div class="composer-inner">
           <div class="composer-box">
+            
+            <input type="file" id="fileUpload" (change)="onFileSelected($event)" accept=".csv, .xlsx, .xls, .pdf" style="display: none;">
+            <label for="fileUpload" class="upload-button" title="Unggah File">
+              <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </label>
+
+            <div *ngIf="selectedFile" class="file-attachment-badge">
+              <span>{{ selectedFile.name }}</span>
+              <button (click)="removeSelectedFile()" type="button" class="remove-file-btn">×</button>
+            </div>
+              
             <textarea #mainInput [(ngModel)]="messageText" rows="1" [disabled]="isLoading" (keydown.enter)="onSubmitKeydown($event)" placeholder="Ask SQL AI Agent, build and execute queries..." class="message-textarea">
             </textarea>
 
@@ -1285,11 +1336,6 @@
                 <path d="m13 5 7 7-7 7"/>
               </svg>
             </button> 
-          </div>
-
-          <div class="prompt-row">
-            <span>Coba tanyakan:</span>
-            <button *ngFor="let chip of promptChips" type="button" class="request-chip" (click)="selectPromptChip(chip)">{{ chip }}</button>
           </div>
         </div>
       </div>
@@ -1506,6 +1552,25 @@
         </button>
       </div>
 
+      <div *ngIf="fileErrorToastVisible" class="file-error-toast">
+        <div class="file-error-toast-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4"/>
+            <path d="M12 16h.01"/>
+          </svg>
+        </div>
+        <div class="file-error-toast-content">
+          <div class="file-error-toast-title">Format File Salah</div>
+          <div class="file-error-toast-desc">{{ fileErrorMessage }}</div>
+        </div>
+        <button type="button" class="file-error-toast-close" aria-label="Close notification" (click)="fileErrorToastVisible = false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 6l12 12M18 6 6 18"/>
+          </svg>
+        </button>
+      </div>
+
       <div *ngIf="deleteModalVisible" class="modal-overlay" (click)="cancelDelete()">
         <div class="delete-modal" (click)="$event.stopPropagation()">
           <button type="button" class="delete-modal-close" aria-label="Close confirmation" (click)="cancelDelete()">
@@ -1587,10 +1652,27 @@
             <label>Username <span class="required">*</span></label>
             <input type="text" [(ngModel)]="newUser.username" placeholder="cth: budi.santoso" class="settings-input" />
           </div>
+
           <div class="form-row">
             <label>Password <span class="required">*</span></label>
-            <input type="password" [(ngModel)]="newUser.password" placeholder="Minimal 8 karakter" class="settings-input" />
+            <div class="password-input-container">
+              <input [type]="showNewUserPassword ? 'text' : 'password'" [(ngModel)]="newUser.password" placeholder="Minimal 8 karakter" class="settings-input"/>
+              <button type="button" class="eye-toggle-btn" (click)="showNewUserPassword = !showNewUserPassword" tabindex="-1">
+                @if (showNewUserPassword) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                }
+              </button>
+            </div>
           </div>
+
           <div class="form-row">
             <label>Nama Lengkap</label>
             <input type="text" [(ngModel)]="newUser.fullname" placeholder="cth: Budi Santoso" class="settings-input" />
