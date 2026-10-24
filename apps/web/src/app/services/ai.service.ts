@@ -125,16 +125,24 @@ export class AiService {
     );
   }
 
-  sendMessage(message: string, sessionId: string, database?: string): Observable<AiResponse> {
+  sendMessage(
+    message: string,
+    sessionId: string,
+    database?: string,
+    fileData?: any,
+    fileBase64?: string
+  ): Observable<AiResponse> {
 
     const user = this.auth.getCurrentUser();
 
-    const body = { 
-      message, 
+    const body = {
+      message,
       sessionId,
       database: database || 'TestDB',
       userId: user?.user_id || null,
-      userRole: user?.role || 'db_datareader'
+      userRole: user?.role || 'db_datareader',
+      fileData: fileData,
+      fileBase64: fileBase64
     };
     
     console.log('📤 POST to n8n:', this.N8N_URL, body);

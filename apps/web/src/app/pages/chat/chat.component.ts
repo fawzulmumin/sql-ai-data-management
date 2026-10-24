@@ -62,7 +62,7 @@ export interface ChatMessage {
   status_text?: string;
   status_type?: 'info' | 'success' | 'warning' | 'danger' | 'rate_limit' |
                 'destructive' | 'forbidden' | 'unauthorized' | 'creation' | 'confirm' |
-                'approved' | 'clarification' | 'confirm_create_table' | 'confirm_rename_column' |
+                'approved' | 'clarification' | 'import_success' | 'confirm_create_table' | 'confirm_rename_column' |
                 'confirm_alter_drop_column' | 'confirm_alter_add_column' | 'confirm_alter_foreign_key' | 'confirm_alter_table';
   narrative?: string;
   metadata?: ChatMetadata;
@@ -101,11 +101,15 @@ export class ChatComponent implements OnInit {
   searchQuery = '';
   drafts: DraftQuery[] = [];
   sessionId = '';
+
   toastVisible = false;
+  fileErrorToastVisible = false;
+  fileErrorMessage = '';
   shareToastVisible = false;
   deleteModalVisible = false;
   rateLimitToastVisible = false;
   rateLimitToastMessage = '';
+
   sessionToDeleteId = '';
   sessionToDeleteTitle = '';
   ChatSession: ChatSession[] = [];
@@ -138,6 +142,9 @@ export class ChatComponent implements OnInit {
   schemaSearchQuery = '';
   currentUser: AuthUser | null = null;
 
+  selectedFile: File | null = null;
+  parsedFileData: any[] = []; 
+
   userPanelOpen = false;
   usersList: any[] = [];
   usersLoading = false;
@@ -145,6 +152,7 @@ export class ChatComponent implements OnInit {
   userSearchQuery = '';
 
   showCreateUserForm = false;
+  showNewUserPassword = false; 
   newUser = { username: '', password: '', fullname: '' };
   newUserRoles: string[] = ['db_datareader'];
   userFormError = '';
@@ -167,12 +175,6 @@ export class ChatComponent implements OnInit {
 
   @ViewChild('mainInput') mainInput!: ElementRef<HTMLTextAreaElement>;
   @ViewChild('chatStream') chatStream!: ElementRef<HTMLDivElement>;
-
-  readonly promptChips = [
-    'Rekap siswa akreditasi A',
-    'Total tunggakan SPP Bantul',
-    'Jumlah sekolah per kota',
-  ];
 
   readonly conversationGroups: ConversationGroup[] = [
     {
@@ -267,6 +269,65 @@ export class ChatComponent implements OnInit {
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.preventDefault();
     this.openSearchModal();
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    this.selectedFile = file;
+    
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.csv') || file.name.endsWith('.xls')) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const headers = rawArray[0] as string[]; 
+
+        this.parsedFileData = rawArray.slice(1).map((row: any) => {
+            let obj: any = {};
+            headers.forEach((header, index) => {
+                obj[header] = row[index];
+            });
+            return obj;
+        });
+        this.messageText = `Tolong masukkan data dari file ${file.name} ini ke tabel `;
+        this.cdr.detectChanges();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    else if (file.name.endsWith('.pdf')) {
+      this.parsedFileData = []; 
+      this.messageText = `Tolong baca dan masukkan data dari file PDF ${file.name} ini ke tabel `;
+      this.cdr.detectChanges();
+    } else {
+      this.fileErrorMessage = 'Format file tidak didukung. Harap unggah file dengan format Excel (.xlsx, .xls), CSV, atau PDF.';
+      this.fileErrorToastVisible = true;
+      setTimeout(() => {
+        this.fileErrorToastVisible = false;
+        this.cdr.detectChanges();
+      }, 4000);
+      this.removeSelectedFile();
+    }
+  }
+
+  removeSelectedFile() {
+    this.selectedFile = null;
+    this.parsedFileData = [];
+    const fileInput = document.getElementById('fileUpload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  }
+
+  private convertFileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
   }
 
   openUserPanel(): void {
@@ -1007,10 +1068,16 @@ export class ChatComponent implements OnInit {
 
     this.aiService.getSchema(this.selectedDatabase).subscribe({
       next: (res: any) => {
+        const views = res.views || [];
+        const viewNames = new Set(views.map((v: any) => v.name.toLowerCase()));
+        const filteredTables = (res.tables || []).filter(
+          (t: any) => !viewNames.has(t.name.toLowerCase())
+        );
+
         this.schemaData = {
-          tables: res.tables || [],
+          tables: filteredTables,
           procedures: res.procedures || [],
-          views: res.views || []
+          views: views
         };
         this.schemaLoading = false;
         this.cdr.detectChanges();
@@ -1152,9 +1219,12 @@ export class ChatComponent implements OnInit {
     localStorage.setItem('sql-agent-history', JSON.stringify(this.messages));
   }
 
-  sendMessage(): void {
+  async sendMessage(): Promise<void> {
     const prompt = this.messageText.trim();
     if (!prompt || this.isLoading) return;
+
+    const filePayload = this.parsedFileData.length > 0 ? this.parsedFileData : undefined;
+    const fileBase64 = this.selectedFile && this.selectedFile.name.endsWith('.pdf') ? await this.convertFileToBase64(this.selectedFile) : undefined;
 
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -1192,8 +1262,7 @@ export class ChatComponent implements OnInit {
       error: (err) => console.error('Failed:', err)
     });
 
-
-    this.aiService.sendMessage(prompt, this.sessionId, this.selectedDatabase).subscribe({
+    this.aiService.sendMessage(prompt, this.sessionId, this.selectedDatabase, filePayload, fileBase64).subscribe({
       next: (response: AiResponse) => {
         let parsed: any = response;
 
@@ -1361,6 +1430,7 @@ export class ChatComponent implements OnInit {
         this.saveMessages();
         this.cdr.detectChanges();
         this.scrollToBottom();
+        this.removeSelectedFile();
       },
 
       error: (error: unknown) => {
@@ -1969,11 +2039,6 @@ export class ChatComponent implements OnInit {
 
     doc.text(`Data Export - ${filename}`, 14, 15);
     doc.save(`${filename}.pdf`);
-  }
-
-  selectPromptChip(chip: string): void {
-    this.messageText = chip;
-    this.focusInput();
   }
 
   filteredConversations(): { label: string; items: any[] }[] {
