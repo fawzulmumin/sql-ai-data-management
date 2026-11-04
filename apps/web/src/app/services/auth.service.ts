@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { timeout } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
+import { switchMap } from 'rxjs/operators';
 
 export interface AuthUser {
   user_id: number;
@@ -25,16 +25,23 @@ export interface AuthLoginResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly AUTH_BASE = `${environment.n8nBaseUrl}/auth`;
+  private readonly AUTH_BASE = 'http://localhost:5678/webhook/auth'; 
 
   constructor(private http: HttpClient) {}
 
   login(username: string, password: string): Observable<AuthLoginResponse | null> {
-    return this.http.post<AuthLoginResponse | null>(`${this.AUTH_BASE}/login`, {
-      username,
-      password
-    }).pipe(
-      timeout(environment.requestTimeoutMs)
+    return this.http.get<any>('https://api.ipify.org?format=json').pipe(
+      switchMap((ipRes: any) => {
+        const userIp = ipRes?.ip || 'Unknown';
+        
+        return this.http.post<AuthLoginResponse | null>(`${this.AUTH_BASE}/login`, { 
+          username, 
+          password,
+          ip_address: userIp 
+        }).pipe(
+          timeout(10000)
+        );
+      })
     );
   }
 
@@ -61,13 +68,8 @@ export class AuthService {
     const token = this.getToken();
     if (!token) return false;
     try {
-      const parts = token.split('.');
-      // JWT (header.payload.signature) atau legacy base64 payload
-      const payloadB64 = parts.length === 3 ? parts[1] : token;
-      const padded = payloadB64 + '='.repeat((4 - payloadB64.length % 4) % 4);
-      const normalized = padded.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(atob(normalized));
-      return typeof payload?.exp === 'number' && payload.exp > Math.floor(Date.now() / 1000);
+      const payload = JSON.parse(atob(token));
+      return payload.exp > Math.floor(Date.now() / 1000);
     } catch {
       return false;
     }
@@ -82,32 +84,32 @@ export class AuthService {
 
   listUsers(): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/list-users`,
-      {},
+      `${this.AUTH_BASE}/list-users`, 
+      {}, 
       { headers: this.getAuthHeaders() }
     );
   }
 
   createUser(payload: any): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/create-user`,
-      payload,
+      `${this.AUTH_BASE}/create-user`, 
+      payload, 
       { headers: this.getAuthHeaders() }
     );
   }
 
   updateUserRole(userId: number, role: string): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/update-role`,
-      { user_id: userId, role },
+      `${this.AUTH_BASE}/update-role`, 
+      { user_id: userId, role }, 
       { headers: this.getAuthHeaders() }
     );
   }
 
   deleteUser(userId: number): Observable<any> {
     return this.http.post(
-      `${this.AUTH_BASE}/delete-user`,
-      { user_id: userId },
+      `${this.AUTH_BASE}/delete-user`, 
+      { user_id: userId }, 
       { headers: this.getAuthHeaders() }
     );
   }

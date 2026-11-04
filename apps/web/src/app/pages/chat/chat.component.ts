@@ -248,8 +248,8 @@ export class ChatComponent implements OnInit {
 
     const urlParams = new URLSearchParams(window.location.search);
     const sharedSessionId = urlParams.get('session');
-
-    if (sharedSessionId && /^web-\d+-[a-z0-9]+$/.test(sharedSessionId)) {
+    
+    if (sharedSessionId) {
       setTimeout(() => this.loadSession(sharedSessionId), 1000);
     }
   }
@@ -271,76 +271,46 @@ export class ChatComponent implements OnInit {
     this.openSearchModal();
   }
 
-  private static readonly MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-  private static readonly ALLOWED_UPLOAD_MIME = new Set([
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-excel',
-    'text/csv',
-    'application/csv',
-    'application/pdf',
-    '',
-  ]);
-
-  private showFileError(message: string): void {
-    this.fileErrorMessage = message;
-    this.fileErrorToastVisible = true;
-    setTimeout(() => {
-      this.fileErrorToastVisible = false;
-      this.cdr.detectChanges();
-    }, 4000);
-    this.removeSelectedFile();
-  }
-
   onFileSelected(event: any) {
-    const file = event.target.files[0] as File | undefined;
+    const file = event.target.files[0];
     if (!file) return;
 
-    const lowerName = file.name.toLowerCase();
-    const extAllowed = ['.xlsx', '.xls', '.csv', '.pdf'].some(ext => lowerName.endsWith(ext));
-    if (!extAllowed) {
-      this.showFileError('Format file tidak didukung. Harap unggah file dengan format Excel (.xlsx, .xls), CSV, atau PDF.');
-      return;
-    }
-    if (!ChatComponent.ALLOWED_UPLOAD_MIME.has(file.type)) {
-      this.showFileError(`MIME file tidak diizinkan: ${file.type || 'unknown'}.`);
-      return;
-    }
-    if (file.size > ChatComponent.MAX_UPLOAD_BYTES) {
-      const mb = (file.size / 1024 / 1024).toFixed(1);
-      this.showFileError(`Ukuran file ${mb} MB melebihi batas 5 MB.`);
-      return;
-    }
-
     this.selectedFile = file;
-
-    if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv') || lowerName.endsWith('.xls')) {
+    
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.csv') || file.name.endsWith('.xls')) {
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          const headers = rawArray[0] as string[];
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const headers = rawArray[0] as string[]; 
 
-          this.parsedFileData = rawArray.slice(1).map((row: any) => {
-            const obj: any = {};
-            headers.forEach((header, index) => { obj[header] = row[index]; });
+        this.parsedFileData = rawArray.slice(1).map((row: any) => {
+            let obj: any = {};
+            headers.forEach((header, index) => {
+                obj[header] = row[index];
+            });
             return obj;
-          });
-          this.messageText = `Tolong masukkan data dari file ${file.name} ini ke tabel `;
-          this.cdr.detectChanges();
-        } catch {
-          this.showFileError('File tidak bisa diparse. Pastikan format Excel/CSV valid.');
-        }
+        });
+        this.messageText = `Tolong masukkan data dari file ${file.name} ini ke tabel `;
+        this.cdr.detectChanges();
       };
-      reader.onerror = () => this.showFileError('Gagal membaca file.');
       reader.readAsArrayBuffer(file);
-    } else {
-      this.parsedFileData = [];
+    }
+    else if (file.name.endsWith('.pdf')) {
+      this.parsedFileData = []; 
       this.messageText = `Tolong baca dan masukkan data dari file PDF ${file.name} ini ke tabel `;
       this.cdr.detectChanges();
+    } else {
+      this.fileErrorMessage = 'Format file tidak didukung. Harap unggah file dengan format Excel (.xlsx, .xls), CSV, atau PDF.';
+      this.fileErrorToastVisible = true;
+      setTimeout(() => {
+        this.fileErrorToastVisible = false;
+        this.cdr.detectChanges();
+      }, 4000);
+      this.removeSelectedFile();
     }
   }
 
@@ -2029,46 +1999,129 @@ export class ChatComponent implements OnInit {
     });
   }
 
-  exportToExcel(data: any[], filename: string) {
-    if (!data || data.length === 0) return;
-    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet(data);
-    const wb: XLSX.WorkBook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data');
-    XLSX.writeFile(wb, `${filename}.xlsx`);
-  }
+  async exportToExcel(message: ChatMessage) {
+    if (!message.sql) return;
+    this.isLoading = true; 
+    const cleanSql = message.sql.replace(/\bTOP\s+\(?\d+\)?\s+/gi, '');
 
-  exportToCSV(data: any[], filename: string) {
-    if (!data || data.length === 0) return;
-    const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet(data);
-    const csv = XLSX.utils.sheet_to_csv(ws);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `${filename}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+    this.aiService.exportData(cleanSql, this.selectedDatabase).subscribe({
+      next: (res: any) => {
+        const fullData = res.data || res; 
+        if (fullData && fullData.length > 0) {
+          
+          const formattedData = fullData.map((row: any) => {
+            let newRow = { ...row };
+            for (const key in newRow) {
+              if (typeof newRow[key] === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/i.test(newRow[key])) {
+                newRow[key] = newRow[key].split('T')[0];
+              }
+            }
+            return newRow;
+          });
 
-  exportToPDF(data: any[], filename: string) {
-    if (!data || data.length === 0) return;
-    const doc = new jsPDF('landscape');
-    
-    const columns = Object.keys(data[0]).map(key => ({
-      header: this.formatColumnName(key), 
-      dataKey: key
-    }));
-
-    autoTable(doc, {
-      columns: columns,
-      body: data,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      startY: 20,
+          const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet(formattedData);
+          const wb: XLSX.WorkBook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Data');
+          XLSX.writeFile(wb, `Data_Export.xlsx`);
+        }
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error(err);
+        alert('Gagal mengekspor data.');
+        this.isLoading = false;
+      }
     });
+  }
 
-    doc.text(`Data Export - ${filename}`, 14, 15);
-    doc.save(`${filename}.pdf`);
+  async exportToCSV(message: ChatMessage) {
+    if (!message.sql) return;
+    this.isLoading = true;
+    const cleanSql = message.sql.replace(/\bTOP\s+\(?\d+\)?\s+/gi, '');
+
+    this.aiService.exportData(cleanSql, this.selectedDatabase).subscribe({
+      next: (res: any) => {
+        const fullData = res.data || res;
+        if (fullData && fullData.length > 0) {
+          
+          const formattedData = fullData.map((row: any) => {
+            let newRow = { ...row };
+            for (const key in newRow) {
+              if (typeof newRow[key] === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/i.test(newRow[key])) {
+                newRow[key] = newRow[key].split('T')[0];
+              }
+            }
+            return newRow;
+          });
+
+          const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet(formattedData);
+          const csv = XLSX.utils.sheet_to_csv(ws);
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.setAttribute('download', `Data_Export.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error(err);
+        alert('Gagal mengekspor data.');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  async exportToPDF(message: ChatMessage) {
+    if (!message.sql) return;
+    this.isLoading = true;
+    const cleanSql = message.sql.replace(/\bTOP\s+\(?\d+\)?\s+/gi, '');
+
+    this.aiService.exportData(cleanSql, this.selectedDatabase).subscribe({
+      next: (res: any) => {
+        const fullData = res.data || res;
+        if (fullData && fullData.length > 0) {
+          
+          const formattedData = fullData.map((row: any) => {
+            let newRow = { ...row };
+            for (const key in newRow) {
+              if (typeof newRow[key] === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/i.test(newRow[key])) {
+                newRow[key] = newRow[key].split('T')[0];
+              }
+            }
+            return newRow;
+          });
+
+          const doc = new jsPDF('landscape');
+          const columns = Object.keys(formattedData[0]).map(key => ({
+            header: this.formatColumnName(key), 
+            dataKey: key
+          }));
+
+          autoTable(doc, {
+            columns: columns,
+            body: formattedData, 
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [59, 130, 246] },
+            startY: 20,
+          });
+
+          doc.text(`Data Export`, 14, 15);
+          doc.save(`Data_Export.pdf`);
+        }
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error(err);
+        alert('Gagal mengekspor data.');
+        this.isLoading = false;
+      }
+    });
   }
 
   filteredConversations(): { label: string; items: any[] }[] {
@@ -2520,7 +2573,7 @@ export class ChatComponent implements OnInit {
     )
   }
 
-  formatDisplayValue(value: unknown): string {
+  playValue(value: unknown): string {
     if (value === null || value === undefined) return '-';
     if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
     if (value instanceof Date) return value.toLocaleDateString('id-ID');
@@ -2546,6 +2599,42 @@ export class ChatComponent implements OnInit {
     return String(value);
   }
 
+  formatDisplayValue(value: unknown): string {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
+    if (value instanceof Date) {
+      return this.formatDateToYMD(value);
+    }
+
+    if (typeof value === 'string') {
+      const isoDateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
+      if (isoDateRegex.test(value)) {
+        const dateObj = new Date(value);
+        if (!isNaN(dateObj.getTime())) {
+          return this.formatDateToYMD(dateObj);
+        }
+      }
+      return value; 
+    }
+
+    if (typeof value === 'number') {
+      if (value >= 1900 && value <= 2100) {
+        return String(value);
+      }
+      return value.toLocaleString('id-ID');
+    }
+
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }
+
+  private formatDateToYMD(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   private focusInput(): void {
     setTimeout(() => {
       this.mainInput?.nativeElement?.focus();
@@ -2557,8 +2646,7 @@ export class ChatComponent implements OnInit {
       date = new Date();
     }
 
-    const pad = (n: number) => String(n).padStart(2, '0');
-
+    const pad = (n: number) => String(n).padStart(2, '0');  
     const hours = pad(date.getHours());
     const minutes = pad(date.getMinutes());
     const seconds = pad(date.getSeconds());
