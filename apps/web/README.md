@@ -4,7 +4,7 @@ Angular 22 SPA untuk SQL AI Data Management agent. Menyediakan chat UI, login, d
 
 ## Prasyarat
 
-- Node.js 20+ dan npm 11+
+- Node.js 22.22.3+ (LTS 22) dan npm 11+
 - Backend n8n berjalan di `http://localhost:5678` (lihat [apps/n8n/README.md](../n8n/README.md))
 
 ## Setup
@@ -20,9 +20,9 @@ Config runtime ada di `src/environments/`:
 | File                           | Mode        | `n8nBaseUrl`                       |
 | ------------------------------ | ----------- | ---------------------------------- |
 | `environment.ts`               | development | `http://localhost:5678/webhook`    |
-| `environment.production.ts`    | production  | `/webhook`                         |
+| `environment.production.ts`    | production  | `/sql-ai/webhook`                  |
 
-Edit file yang relevan untuk mengganti base URL n8n.
+Edit file yang relevan untuk mengganti base URL n8n. Build production dipakai untuk image Docker/Kubernetes dan di-serve di subpath `/sql-ai/` (`--base-href /sql-ai/`, lihat `Dockerfile` dan `nginx.conf`).
 
 ## Perintah
 
@@ -37,7 +37,6 @@ npm test           # unit test (Vitest)
 ```
 src/
 ├── app/
-│   ├── directives/        safe-html, dll
 │   ├── guards/            AuthGuard
 │   ├── pages/             chat, login
 │   └── services/          ai.service, auth.service

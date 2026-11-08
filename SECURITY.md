@@ -35,7 +35,7 @@ Audit menemukan 19 isu (6 KRITIS, 7 TINGGI, 3 SEDANG, 3 RENDAH).
 | T-2   | TINGGI   | Frontend   | Token di `localStorage` rawan XSS. Migrasi ke httpOnly cookie butuh: (1) backend Set-Cookie di login response, (2) credentials: 'include' di HTTP client, (3) CORS tweak. Diperlakukan sebagai sprint sendiri. |
 | T-4   | TINGGI   | Auth       | Rate limiting server-side. Butuh tabel `dbo.login_attempts (username, ip, ts)` + check di login workflow (lockout 5x fail dalam 15 menit). Client-side 5-min lockout saat ini (localStorage) **bisa di-bypass** dengan clear localStorage. |
 | S-1   | SEDANG   | SQL AI Agent | LLM-generated SQL tanpa strict allowlist. Regex deteksi destructive bypass-able (`/* comment */DROP`). Fix: pakai SQL parser (`node-sql-parser`) untuk whitelist statement type per role. |
-| S-3   | SEDANG   | Infra      | **Rotate API key Rindri sekarang** (`[REDACTED]` tercatat di `apps/n8n/credentials.local.md` — walaupun gitignored, repo ada di OneDrive yang auto-sync ke Microsoft cloud). SQL `trustServerCertificate: true` oke untuk dev; production ganti ke `false` + valid cert. |
+| S-3   | SEDANG   | Infra      | **Rotate API key Rindri sekarang**. Key lama pernah tercantum di dokumen ini (masih ada di riwayat git) dan di `apps/n8n/credentials.local.md` — walaupun gitignored, repo ada di OneDrive yang auto-sync ke Microsoft cloud. Nilai key tidak boleh dicatat di repo. SQL `trustServerCertificate: true` oke untuk dev; production ganti ke `false` + valid cert. |
 | R-2   | RENDAH   | Infra      | Pindahkan `apps/n8n/.env` ke lokasi di luar OneDrive (misal symlink dari `C:\dev\sql-ai\.env`), atau exclude folder project dari OneDrive sync, supaya `N8N_ENCRYPTION_KEY` tidak ikut terbackup ke cloud. |
 
 ## Setup JWT_SECRET
@@ -66,8 +66,8 @@ Semua user existing harus **login ulang** — token lama (base64 polos) tidak ko
 
 ## Reporting vulnerability baru
 
-Email: `kontak@example.com` dengan subject `[SEC] <ringkasan>`.
-Jangan buka public issue di GitHub untuk vulnerability yang masih bisa dieksploitasi.
+Laporkan lewat **confidential issue** di repo GitLab proyek ini (centang *This issue is confidential*) dengan judul `[SEC] <ringkasan>`, atau hubungi pengelola repo secara langsung.
+Jangan buka issue publik (non-confidential) untuk vulnerability yang masih bisa dieksploitasi.
 
 Response time target: 48 jam acknowledgment, 2 minggu fix untuk KRITIS, 1 bulan untuk TINGGI.
 

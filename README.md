@@ -23,21 +23,23 @@ Monorepo untuk **SQL AI Data Management**: agen AI yang menerima pertanyaan natu
 ## Struktur repo
 
 ```
-sql-ai-data-management/
+sql-ai-agent/
 ├── apps/
-│   ├── web/              Angular SPA
+│   ├── web/              Angular SPA (+ Dockerfile, nginx.conf)
 │   └── n8n/              n8n workflows + docker-compose
 ├── database/             SQL dumps (TestDB.sql, TestDB4.sql)
+├── scripts/              helper script (apply-security-fixes.mjs)
 ├── .editorconfig
 ├── .gitignore
-├── LICENSE
-├── package.json          npm workspaces
-└── README.md
+├── .gitlab-ci.yml        pipeline build image + deploy
+├── package.json          script root
+├── README.md
+└── SECURITY.md
 ```
 
 ## Prasyarat
 
-- Node.js 20+ dan npm 11+
+- Node.js 22.22.3+ (LTS 22) dan npm 11+
 - Microsoft SQL Server (lokal atau remote)
 - (Opsional) Docker Desktop — untuk mode container
 
@@ -49,7 +51,7 @@ Skenario default: SQL Server 2022 lokal + Windows Authentication.
 
 ```powershell
 git clone https://github.com/fawzulmumin/sql-ai-data-management.git
-cd sql-ai-data-management
+cd sql-ai-agent
 cd apps\web && npm install && cd ..\..
 ```
 
@@ -112,10 +114,24 @@ Buka `http://localhost:4200` → login dengan user yang Anda reset di step 4.
 | `n8n:logs`     | Tail logs container n8n.                         |
 | `db:apply`     | Jalankan SQL dumps via sqlcmd (edit instance name di package.json kalau beda). |
 
+## Deployment (GitLab CI → Kubernetes)
+
+Pipeline ada di [`.gitlab-ci.yml`](.gitlab-ci.yml). Hanya frontend (`apps/web`) yang di-build menjadi image Docker (nginx) dan di-push ke `registry.example.com`. n8n tidak di-deploy lewat pipeline ini.
+
+| Branch                       | Job              | Tag image                                    | Deploy (`kubectl rollout restart`)                |
+| ---------------------------- | ---------------- | -------------------------------------------- | ------------------------------------------------- |
+| `release/development`        | `build-web-dev`  | `1.0.0-staging`, `1.0.0-staging-<pipeline>`  | `deployment/sql-ai-web` di ns `sql-ai-agent-dev`  |
+| `release/production`, `main` | `build-web-prod` | `1.0.0`, `1.0.0-<pipeline>`, `latest`        | `deployment/sql-ai-web` di ns `sql-ai-agent`      |
+
+- Aplikasi di-serve di subpath `/sql-ai/` (build pakai `--base-href /sql-ai/`, lihat `apps/web/nginx.conf`).
+- Build production memanggil n8n lewat path relatif `/sql-ai/webhook` (`environment.production.ts`). Routing ke n8n diatur di Kubernetes (ingress), di luar repo ini.
+- Perubahan ke `release/development` dan `release/production` masuk lewat Merge Request.
+
 ## Environment variables
 
 - `apps/n8n/.env` (dari `.env.example`) — config startup n8n.
-- `apps/web/src/environments/environment.ts` — base URL n8n untuk frontend.
+- `apps/web/src/environments/environment.ts` — base URL n8n untuk dev lokal (`http://localhost:5678/webhook`).
+- `apps/web/src/environments/environment.production.ts` — base URL n8n untuk build production/Kubernetes (`/sql-ai/webhook`).
 
 Credential SQL Server dan LLM API key **tidak** disimpan di `.env`. Dikonfigurasi via UI n8n (Credentials vault), dienkripsi pakai `N8N_ENCRYPTION_KEY`.
 
@@ -141,4 +157,4 @@ Lihat [`SECURITY.md`](SECURITY.md) untuk status audit terakhir, follow-up yang b
 
 ## Lisensi
 
-[MIT](LICENSE)
+MIT

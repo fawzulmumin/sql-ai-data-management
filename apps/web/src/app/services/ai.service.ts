@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface AiResponse {
   status_text: string;
@@ -34,28 +35,40 @@ export interface AIRequest {
 })
 
 export class AiService {
-  private readonly N8N_URL = 'http://localhost:5678/webhook/sql-agent';
-  private readonly N8N_DATABASES_URL = 'http://localhost:5678/webhook/databases';
-  private readonly N8N_SCHEMA_URL = 'http://localhost:5678/webhook/schema';
-  private readonly N8N_SAVE_MESSAGE_URL = 'http://localhost:5678/webhook/save-message';
-  private readonly N8N_SESSIONS_URL = 'http://localhost:5678/webhook/sessions';
-  private readonly N8N_HISTORY_URL = 'http://localhost:5678/webhook/history';
-  private readonly N8N_DELETE_SESSION_URL = 'http://localhost:5678/webhook/delete-session';
-  private readonly N8N_EXPORT_URL = 'http://localhost:5678/webhook/export-data';
-  private readonly TIMEOUT_MS = 60000;
+  private readonly BASE = environment.n8nBaseUrl;
+  private readonly N8N_URL = `${this.BASE}/sql-agent`;
+  private readonly N8N_DATABASES_URL = `${this.BASE}/databases`;
+  private readonly N8N_SCHEMA_URL = `${this.BASE}/schema`;
+  private readonly N8N_SAVE_MESSAGE_URL = `${this.BASE}/save-message`;
+  private readonly N8N_SESSIONS_URL = `${this.BASE}/sessions`;
+  private readonly N8N_HISTORY_URL = `${this.BASE}/history`;
+  private readonly N8N_DELETE_SESSION_URL = `${this.BASE}/delete-session`;
+  private readonly N8N_EXPORT_URL = `${this.BASE}/export-data`;
+  private readonly TIMEOUT_MS = environment.requestTimeoutMs;
 
   constructor(
     private http: HttpClient,
     private auth: AuthService
   ) {}
 
+  private static readonly SESSION_ID_RE = /^web-\d+-[a-z0-9]+$/;
+
+  private assertValidSessionId(sessionId: string): void {
+    if (!AiService.SESSION_ID_RE.test(sessionId)) {
+      throw new Error('Format sessionId tidak valid.');
+    }
+  }
+
   exportData(query: string, database: string): Observable<any> {
-    return this.http.post<any>(this.N8N_EXPORT_URL, { query, database });
+    return this.http.post<any>(this.N8N_EXPORT_URL, { query, database }, {
+      headers: this.auth.getAuthHeaders()
+    });
   }
 
   deleteSessionFromDB(sessionId: string): Observable<any> {
+    this.assertValidSessionId(sessionId);
     return this.http.post(this.N8N_DELETE_SESSION_URL, { sessionId });
-  } 
+  }
 
   saveMessageToHistory(payload: {
     sessionId: string;
@@ -117,10 +130,11 @@ export class AiService {
   }
 
   getHistory(sessionId: string): Observable<any> {
+    this.assertValidSessionId(sessionId);
     const user = this.auth.getCurrentUser();
     const userId = user?.user_id || null;
-    
-    return this.http.get(`${this.N8N_HISTORY_URL}?sessionId=${sessionId}&userId=${userId}`, {
+
+    return this.http.get(`${this.N8N_HISTORY_URL}?sessionId=${encodeURIComponent(sessionId)}&userId=${userId}`, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
     }).pipe(
       timeout(this.TIMEOUT_MS),
@@ -128,12 +142,18 @@ export class AiService {
     );
   }
 
-  sendMessage(message: string, sessionId: string, database?: string, fileData?: any, fileBase64?: string): Observable<AiResponse> {
+  sendMessage(
+    message: string,
+    sessionId: string,
+    database?: string,
+    fileData?: any,
+    fileBase64?: string
+  ): Observable<AiResponse> {
 
     const user = this.auth.getCurrentUser();
 
-    const body = { 
-      message, 
+    const body = {
+      message,
       sessionId,
       database: database || 'TestDB',
       userId: user?.user_id || null,
@@ -142,7 +162,7 @@ export class AiService {
       fileBase64: fileBase64
     };
     
-    console.log('📤 POST to n8n:', this.N8N_URL, body);
+    if (!environment.production) console.debug('[ai] request:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -166,7 +186,7 @@ export class AiService {
       pending_id: pending_id,
       database: database || 'TestDB'
     };
-    console.log('CONFIRM to n8n:', body);
+    if (!environment.production) console.debug('[ai] confirm:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -183,7 +203,7 @@ export class AiService {
       query,
       database: database || 'TestDB'
     };
-    console.log('CANCEL to n8n:', body);
+    if (!environment.production) console.debug('[ai] cancel:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -202,7 +222,7 @@ export class AiService {
       direct_execute: true
     };
     
-    console.log('⚡ DIRECT EXECUTE:', body);
+    if (!environment.production) console.debug('[ai] direct-execute:', body);
 
     return this.http.post<AiResponse>(this.N8N_URL, body, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -213,7 +233,7 @@ export class AiService {
   }
 
   getDatabases(): Observable<{ databases: string[]; total: number }> {
-    console.log('📤 GET databases from:', this.N8N_DATABASES_URL);
+    if (!environment.production) console.debug('[ai] get databases');
 
     return this.http.get<{ databases: string[]; total: number }>(this.N8N_DATABASES_URL, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -225,7 +245,7 @@ export class AiService {
 
   getSchema(database: string): Observable<any> {
     const url = this.N8N_SCHEMA_URL + '?database=' + encodeURIComponent(database);
-    console.log('📤 GET schema from:', url);
+    if (!environment.production) console.debug('[ai] get schema:', database);
 
     return this.http.get<any>(url, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
@@ -252,7 +272,7 @@ export class AiService {
     if (error.name === 'TimeoutError') {
       errorMessage = 'Request timeout. Server AI tidak merespons.';
     } else if (error.status === 0) {
-      errorMessage = 'Tidak dapat terhubung ke n8n. Pastikan n8n berjalan di http://localhost:5678';
+      errorMessage = `Tidak dapat terhubung ke n8n. Pastikan n8n berjalan di ${environment.n8nBaseUrl}`;
     } else if (error.status === 404) {
       errorMessage = 'Webhook tidak ditemukan. Cek path webhook di n8n.';
     } else if (error.status === 500) {

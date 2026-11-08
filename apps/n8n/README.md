@@ -214,6 +214,8 @@ POST  /webhook/update-message
 POST  /webhook/delete-session
 ```
 
+> `POST /webhook/export-data` dipanggil frontend (tombol Ekspor Excel/CSV/PDF), tetapi workflow-nya belum ada di `workflows/`. Tambahkan export workflow tersebut ke repo.
+
 Webhook URL **bukan credential** — hanya endpoint publik n8n. Base URL dikonfigurasi di `apps/web/src/environments/environment.ts`.
 
 ## Troubleshooting

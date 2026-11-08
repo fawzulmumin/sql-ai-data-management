@@ -7,7 +7,10 @@ import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
-  let auth: any;
+  let auth: {
+    login: ReturnType<typeof vi.fn<AuthService['login']>>;
+    saveSession: ReturnType<typeof vi.fn<AuthService['saveSession']>>;
+  };
 
   beforeEach(async () => {
     auth = {
