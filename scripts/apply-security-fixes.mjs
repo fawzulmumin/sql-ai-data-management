@@ -8,9 +8,7 @@
 //   - SQL AI Agent: K-3 database whitelist + K-4 role from token + nonaktifkan
 //                   direct_execute untuk non-db_owner
 //
-// Follow-up (BELUM di-auto-patch, perlu restructuring workflow):
-//   - K-2 IDOR di Get History / Get Sessions / Delete Session / Save Message / Update Message
-//     butuh menambah node "Extract User From Token" + rewire. Lihat SECURITY.md.
+// Catatan: perbaikan lanjutan untuk workflow lain masih dalam pengerjaan. Lihat SECURITY.md.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -302,6 +300,6 @@ if (_bodyRef) {
 });
 
 console.log('\n✅ Patch selesai (K-1 JWT, K-3 whitelist DB, K-4 role from token).');
-console.log('⏳ Follow-up manual (lihat SECURITY.md): K-2 IDOR, K-5 bcrypt, T-4 server rate limit.');
+console.log('⏳ Perbaikan lanjutan masih dalam pengerjaan (lihat SECURITY.md).');
 console.log('⚠️  Set JWT_SECRET di apps/n8n/.env (min 32 char) sebelum re-import.');
 console.log('⚠️  User existing akan perlu re-login (token lama tidak valid dengan HMAC baru).');

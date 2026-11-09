@@ -1,7 +1,7 @@
 # Security
 
 Dokumen ini mencatat postur keamanan monorepo SQL AI Data Management:
-status fix dari audit terakhir, follow-up yang belum di-implement, dan
+status fix dari audit terakhir dan
 panduan reporting untuk vulnerability baru.
 
 ## Status fix dari audit 2026-10-24
@@ -25,18 +25,7 @@ Audit menemukan 19 isu (6 KRITIS, 7 TINGGI, 3 SEDANG, 3 RENDAH).
 | R-1   | RENDAH   | Infra      | `N8N_BASIC_AUTH_ACTIVE=true` default di env.example + docker-compose. |
 | R-3   | RENDAH   | Frontend   | `console.log` di services diganti `console.debug` yang di-guard `!environment.production`. |
 
-### ⏳ Follow-up (butuh migrasi atau restructuring, belum di-auto-apply)
-
-| ID    | Severity | Area       | Yang perlu dilakukan                                              |
-| ----- | -------- | ---------- | ----------------------------------------------------------------- |
-| K-2   | KRITIS   | n8n workflows | IDOR di **Get History**, **Get Sessions**, **Delete Session**, **Save Message**, **Update Message**. Butuh tambah node "Extract User From Token" (code node baru) + rewire supaya SQL `WHERE user_id = $('Extract User').item.json.user_id`. Script `scripts/apply-security-fixes.mjs` tidak auto-apply karena menambah node + ubah connections map berisiko memutus workflow yang sedang jalan. **Workaround sementara**: setelah K-1 (JWT HMAC) aktif, attacker tidak lagi bisa forge token sembarangan, jadi dampak IDOR berkurang dari "siapa pun" jadi "user terotentikasi". Fix penuh butuh restructuring per workflow. |
-| K-5   | KRITIS   | Auth       | Password hashing SHA256 polos → bcrypt/argon2. Butuh: (1) install node module `bcryptjs` di n8n (community nodes atau mount sebagai dependency), (2) migrasi hash existing (lazy re-hash saat user login berikutnya pakai password mereka — simpan format baru). Default `.env` password `admin12345` di seed data harus di-rotate. |
-| T-1   | TINGGI   | n8n workflows | SQL injection via `sessionId` di workflows Save/Update/Delete yang pakai interpolasi template tanpa escape. Frontend sudah validasi format sessionId (S-2 defense), tapi backend harus escape sendiri. Fix: `{{ sessionId.replace(/'/g, "''") }}` atau pakai parameterized query n8n MSSQL node. |
-| T-2   | TINGGI   | Frontend   | Token di `localStorage` rawan XSS. Migrasi ke httpOnly cookie butuh: (1) backend Set-Cookie di login response, (2) credentials: 'include' di HTTP client, (3) CORS tweak. Diperlakukan sebagai sprint sendiri. |
-| T-4   | TINGGI   | Auth       | Rate limiting server-side. Butuh tabel `dbo.login_attempts (username, ip, ts)` + check di login workflow (lockout 5x fail dalam 15 menit). Client-side 5-min lockout saat ini (localStorage) **bisa di-bypass** dengan clear localStorage. |
-| S-1   | SEDANG   | SQL AI Agent | LLM-generated SQL tanpa strict allowlist. Regex deteksi destructive bypass-able (`/* comment */DROP`). Fix: pakai SQL parser (`node-sql-parser`) untuk whitelist statement type per role. |
-| S-3   | SEDANG   | Infra      | **Rotate API key Rindri sekarang**. Key lama pernah tercantum di dokumen ini (masih ada di riwayat git) dan di `apps/n8n/credentials.local.md` — walaupun gitignored, repo ada di OneDrive yang auto-sync ke Microsoft cloud. Nilai key tidak boleh dicatat di repo. SQL `trustServerCertificate: true` oke untuk dev; production ganti ke `false` + valid cert. |
-| R-2   | RENDAH   | Infra      | Pindahkan `apps/n8n/.env` ke lokasi di luar OneDrive (misal symlink dari `C:\dev\sql-ai\.env`), atau exclude folder project dari OneDrive sync, supaya `N8N_ENCRYPTION_KEY` tidak ikut terbackup ke cloud. |
+Sebagian temuan lain dari audit masih dalam pengerjaan. Rinciannya tidak dipublikasikan sampai selesai diperbaiki.
 
 ## Setup JWT_SECRET
 
@@ -66,8 +55,8 @@ Semua user existing harus **login ulang** — token lama (base64 polos) tidak ko
 
 ## Reporting vulnerability baru
 
-Laporkan lewat **confidential issue** di repo GitLab proyek ini (centang *This issue is confidential*) dengan judul `[SEC] <ringkasan>`, atau hubungi pengelola repo secara langsung.
-Jangan buka issue publik (non-confidential) untuk vulnerability yang masih bisa dieksploitasi.
+Laporkan secara privat lewat GitHub: buka tab **Security** repo ini → **Report a vulnerability**.
+Jangan membuka issue publik untuk vulnerability yang masih bisa dieksploitasi.
 
 Response time target: 48 jam acknowledgment, 2 minggu fix untuk KRITIS, 1 bulan untuk TINGGI.
 

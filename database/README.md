@@ -36,7 +36,7 @@ Reset salah satu user ke password baru yang Anda tahu, misal `Nabil`:
 
 ```powershell
 # GANTI password sesuai keinginan
-$password = "<password-anda>"
+$password = "<password-baru>"
 $username = "Nabil"
 
 # Generate salt 16-byte + SHA256(salt + password)
@@ -63,7 +63,7 @@ Format password di tabel: `<salt-hex>:<sha256(salt+password)-hex>`. Algoritma in
 Verifikasi via webhook:
 
 ```powershell
-$body = @{ username = "Nabil"; password = "<password-anda>" } | ConvertTo-Json
+$body = @{ username = "Nabil"; password = "<password-baru>" } | ConvertTo-Json
 Invoke-RestMethod -Uri "http://localhost:5678/webhook/auth/login" -Method Post -ContentType "application/json" -Body $body
 # → success=True + ada field token = login OK
 ```
