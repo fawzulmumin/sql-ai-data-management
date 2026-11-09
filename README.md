@@ -1,29 +1,52 @@
 # SQL AI — Data Management Agent
 
+![Angular](https://img.shields.io/badge/Angular-DD0031?logo=angular&logoColor=white)
+![n8n](https://img.shields.io/badge/n8n-EA4B71?logo=n8n&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL%20Server-CC2927?logo=microsoftsqlserver&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
 Monorepo untuk **SQL AI Data Management**: agen AI yang menerima pertanyaan natural language, menerjemahkannya jadi SQL, mengeksekusi ke Microsoft SQL Server, dan mengembalikan hasil + narasi. Lengkap dengan auth, role-based access, chat history, dan konfirmasi untuk operasi destruktif.
+
+## Fitur
+
+- **Tanya data dengan bahasa natural** — pertanyaan diterjemahkan menjadi query T-SQL oleh agen AI, lalu hasilnya dijelaskan dalam bentuk narasi.
+- **Autentikasi dan role-based access** — login dengan token, akses dibatasi sesuai peran pengguna.
+- **Konfirmasi operasi destruktif** — perubahan data harus dikonfirmasi pengguna sebelum dijalankan.
+- **Riwayat chat** — sesi percakapan disimpan, bisa dibuka ulang, dan dihapus.
+- **Database explorer dan selector** — telusuri struktur database dan pilih database target.
 
 ## Arsitektur
 
-```
-┌────────────────┐   HTTP   ┌──────────────────┐    SQL     ┌──────────────┐
-│  apps/web      │ ───────► │   apps/n8n       │ ─────────► │  SQL Server  │
-│  (Angular 22)  │          │  (workflows)     │            │              │
-└────────────────┘          └──────────────────┘            └──────────────┘
-                                     │
-                                     ▼
-                             ┌──────────────┐
-                             │  LLM Agent   │
-                             └──────────────┘
+```mermaid
+flowchart LR
+    U[Pengguna] --> W["apps/web<br/>Angular SPA"]
+    W -->|HTTP webhook| N["apps/n8n<br/>workflow"]
+    N -->|T-SQL| S[(Microsoft SQL Server)]
+    N <--> L[LLM Agent]
+    S -->|hasil query| N
+    N -->|hasil + narasi| W
 ```
 
 - `apps/web` — Angular 22 SPA (chat, login, user management).
 - `apps/n8n` — workflow n8n (auth, SQL agent, chat history, DB explorer).
 - `database/` — SSMS SQL dumps untuk `TestDB` + `TestDB4`.
 
+### Workflow n8n
+
+| Workflow | Fungsi |
+|----------|--------|
+| Auth Service | Login dan penerbitan token |
+| SQL AI Agent | Mengubah pertanyaan menjadi SQL, mengeksekusi, dan menyusun narasi |
+| Database Explorer | Menelusuri struktur database |
+| Database Selector | Memilih database target |
+| Save Message / Update Message | Menyimpan dan memperbarui pesan chat |
+| Get Sessions / Get History / Delete Session | Mengelola sesi dan riwayat chat |
+
 ## Struktur repo
 
 ```
-sql-ai-agent/
+sql-ai-data-management/
 ├── apps/
 │   ├── web/              Angular SPA (+ Dockerfile, nginx.conf)
 │   └── n8n/              n8n workflows + docker-compose
